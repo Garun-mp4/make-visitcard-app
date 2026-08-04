@@ -1,0 +1,23 @@
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example
+.vercel/
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.local
+*.log
+.DS_Store
+Thumbs.db
+service-account*.json
+
+# Local design inputs are kept outside application commits.
+App-design.pen
+cardly_codex_vercel_implementation_prompt.md
+text.txt

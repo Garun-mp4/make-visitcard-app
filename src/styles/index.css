@@ -1,0 +1,244 @@
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light;
+  --background: #f7f7f5;
+  --surface: #ffffff;
+  --surface-secondary: #f0f1ed;
+  --surface-elevated: #ffffff;
+  --text-primary: #171916;
+  --text-secondary: #555b52;
+  --text-muted: #7a8176;
+  --border: #e1e4de;
+  --border-strong: #c8cec3;
+  --accent: #1f6b4f;
+  --accent-hover: #17563f;
+  --accent-soft: #e5f2ec;
+  --accent-contrast: #ffffff;
+  --success: #25845f;
+  --warning: #b16c16;
+  --warning-soft: #fff5e8;
+  --error: #c84343;
+  --error-soft: #fff0f0;
+  --focus-ring: #4e9bff;
+  --shadow-floating: 0 12px 32px rgb(40 54 45 / 9%);
+  --shadow-modal: 0 24px 70px rgb(20 27 23 / 22%);
+  --tg-safe-top: 0px;
+  --tg-safe-right: 0px;
+  --tg-safe-bottom: 0px;
+  --tg-safe-left: 0px;
+  --tg-content-safe-top: 0px;
+  --tg-content-safe-bottom: 0px;
+}
+
+[data-telegram-theme='dark'] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
+  font-family: 'Inter Variable', Inter, system-ui, sans-serif;
+  color: var(--text-primary);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100dvh;
+  background: var(--background);
+  overflow-x: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled),
+a[href] {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.heading-font {
+  font-family: 'Geist Variable', Geist, system-ui, sans-serif;
+}
+
+.app-shell {
+  min-height: max(100dvh, var(--tg-viewport-stable-height, 100dvh));
+  padding-top: max(var(--tg-safe-top), var(--tg-content-safe-top));
+  padding-right: var(--tg-safe-right);
+  padding-left: var(--tg-safe-left);
+}
+
+.owner-mobile-content {
+  width: 100%;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 20px calc(104px + max(var(--tg-safe-bottom), var(--tg-content-safe-bottom)));
+}
+
+.page-header {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-title {
+  margin: 0;
+  font-family: 'Geist Variable', Geist, system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 560;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.field-group {
+  display: grid;
+  gap: 7px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--text-secondary);
+}
+
+.field-control {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-primary);
+  padding: 12px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent);
+  outline: none;
+}
+
+.field-control[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+textarea.field-control {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.helper-text,
+.error-text {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.error-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--error);
+}
+
+.stack-12 {
+  display: grid;
+  gap: 12px;
+}
+.stack-16 {
+  display: grid;
+  gap: 16px;
+}
+.stack-20 {
+  display: grid;
+  gap: 20px;
+}
+.stack-24 {
+  display: grid;
+  gap: 24px;
+}
+
+.card-preview-frame {
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 359px) {
+  .owner-mobile-content {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+  .page-title {
+    font-size: 23px;
+  }
+}
+
+@media (min-width: 768px) {
+  .owner-mobile-content {
+    max-width: 760px;
+    padding-right: 28px;
+    padding-left: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

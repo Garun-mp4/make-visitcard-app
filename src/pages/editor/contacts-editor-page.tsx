@@ -1,0 +1,155 @@
+import { ChevronDown, ChevronUp, Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
+
+import { useCardStore } from '@/app/card-store'
+import { Button } from '@/components/ui/button'
+import { Field } from '@/components/ui/field'
+import { EditorShell } from '@/features/editor/editor-shell'
+import { moveItem } from '@/lib/utils'
+
+export default function ContactsEditorPage() {
+  const { card, updateCard } = useCardStore()
+  const action = card.primaryAction
+  const addLink = () => {
+    if (card.links.length >= 10) return
+    updateCard((current) => ({
+      ...current,
+      links: [
+        ...current.links,
+        {
+          id: crypto.randomUUID(),
+          type: 'website',
+          label: 'Новая ссылка',
+          url: 'https://example.com',
+          enabled: true,
+          public: true,
+          position: current.links.length,
+        },
+      ],
+    }))
+  }
+  return (
+    <EditorShell title="Контакты">
+      <section className="stack-16">
+        <h2 className="heading-font m-0 text-lg">Главное действие</h2>
+        <Field
+          label="Текст кнопки"
+          value={action.label}
+          onChange={(event) =>
+            updateCard((current) => ({
+              ...current,
+              primaryAction: { ...current.primaryAction, label: event.target.value },
+            }))
+          }
+        />
+        <Field
+          label="Ссылка или контакт"
+          value={action.value}
+          onChange={(event) =>
+            updateCard((current) => ({
+              ...current,
+              primaryAction: { ...current.primaryAction, value: event.target.value },
+            }))
+          }
+        />
+      </section>
+      <section className="stack-12">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="heading-font m-0 text-lg">Ссылки</h2>
+            <p className="helper-text">{card.links.length} из 10</p>
+          </div>
+          <Button variant="secondary" onClick={addLink} disabled={card.links.length >= 10}>
+            <Plus size={16} />
+            Добавить
+          </Button>
+        </div>
+        {card.links.map((link, index) => (
+          <article key={link.id} className="surface grid gap-3 rounded-xl p-3">
+            <div className="flex items-center gap-2">
+              <input
+                className="field-control min-h-11 flex-1"
+                aria-label="Название ссылки"
+                value={link.label}
+                onChange={(event) =>
+                  updateCard((current) => ({
+                    ...current,
+                    links: current.links.map((item) =>
+                      item.id === link.id ? { ...item, label: event.target.value } : item,
+                    ),
+                  }))
+                }
+              />
+              <button
+                aria-label={link.public ? 'Скрыть ссылку' : 'Сделать ссылку публичной'}
+                className="grid size-11 place-items-center"
+                onClick={() =>
+                  updateCard((current) => ({
+                    ...current,
+                    links: current.links.map((item) =>
+                      item.id === link.id ? { ...item, public: !item.public } : item,
+                    ),
+                  }))
+                }
+              >
+                {link.public ? <Eye size={18} /> : <EyeOff size={18} />}
+              </button>
+            </div>
+            <input
+              className="field-control min-h-11"
+              aria-label="URL ссылки"
+              value={link.url}
+              onChange={(event) =>
+                updateCard((current) => ({
+                  ...current,
+                  links: current.links.map((item) =>
+                    item.id === link.id ? { ...item, url: event.target.value } : item,
+                  ),
+                }))
+              }
+            />
+            <div className="flex justify-end gap-1">
+              <button
+                aria-label="Переместить выше"
+                className="grid size-10 place-items-center"
+                disabled={index === 0}
+                onClick={() =>
+                  updateCard((current) => ({
+                    ...current,
+                    links: moveItem(current.links, index, -1),
+                  }))
+                }
+              >
+                <ChevronUp size={17} />
+              </button>
+              <button
+                aria-label="Переместить ниже"
+                className="grid size-10 place-items-center"
+                disabled={index === card.links.length - 1}
+                onClick={() =>
+                  updateCard((current) => ({
+                    ...current,
+                    links: moveItem(current.links, index, 1),
+                  }))
+                }
+              >
+                <ChevronDown size={17} />
+              </button>
+              <button
+                aria-label="Удалить ссылку"
+                className="grid size-10 place-items-center text-[var(--error)]"
+                onClick={() =>
+                  updateCard((current) => ({
+                    ...current,
+                    links: current.links.filter((item) => item.id !== link.id),
+                  }))
+                }
+              >
+                <Trash2 size={17} />
+              </button>
+            </div>
+          </article>
+        ))}
+      </section>
+    </EditorShell>
+  )
+}
