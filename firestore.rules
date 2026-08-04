@@ -11,9 +11,9 @@ service cloud.firestore {
     }
 
     match /cards/{uid} {
-      allow read, create, update: if isOwner(uid)
+      allow read, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid)
         && request.resource.data.ownerUid == request.auth.uid;
-      allow delete: if isOwner(uid);
     }
 
     match /publicCards/{slug} {
