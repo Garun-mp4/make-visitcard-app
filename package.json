@@ -21,7 +21,7 @@
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:rules": "vitest run --config vitest.rules.config.ts",
+    "test:rules": "firebase emulators:exec --project cardly-test --only firestore,storage \"vitest run --config vitest.rules.config.ts\"",
     "test:e2e": "playwright test",
     "check:server-entry": "tsx scripts/check-server-entry.ts",
     "check:client-boundary": "tsx scripts/check-client-boundary.ts",
@@ -44,7 +44,7 @@
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.84.0",
     "react-i18next": "^17.0.11",
-    "react-router-dom": "^7.18.2",
+    "react-router-dom": "7.18.2",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.3.3"
   },

@@ -12,6 +12,7 @@ import {
 import { demoCard, demoLeads, demoOwner, demoStats } from '@shared/demo-data'
 import type { CardDraft, CardStats, LeadRecord, OwnerProfile } from '@shared/types'
 import { cardRepository } from '@/services/card-repository'
+import { useAuth } from '@/features/auth/auth-provider'
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
@@ -31,6 +32,7 @@ interface CardStoreValue {
 const CardStoreContext = createContext<CardStoreValue | null>(null)
 
 export function CardStoreProvider({ children }: PropsWithChildren) {
+  const auth = useAuth()
   const [card, setCard] = useState<CardDraft>(demoCard)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [leads, setLeads] = useState(demoLeads)
@@ -40,14 +42,16 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
   cardRef.current = card
 
   useEffect(() => {
+    if (auth.status !== 'demo' && auth.status !== 'authenticated') return
     let active = true
-    void cardRepository.load(demoOwner.uid).then((saved) => {
-      if (active && saved) setCard(saved)
+    const ownerUid = auth.user?.uid ?? demoOwner.uid
+    void cardRepository.load(ownerUid).then((saved) => {
+      if (active) setCard(saved ?? { ...demoCard, ownerUid })
     })
     return () => {
       active = false
     }
-  }, [])
+  }, [auth.status, auth.user?.uid])
 
   useEffect(() => {
     const handleOnline = () => setOnline(true)
@@ -68,13 +72,14 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     setSaveStatus('saving')
     try {
-      const saved = await cardRepository.save(cardRef.current)
+      const ownerUid = auth.user?.uid ?? cardRef.current.ownerUid
+      const saved = await cardRepository.save({ ...cardRef.current, ownerUid })
       setCard((current) => (current.updatedAt > saved.updatedAt ? current : saved))
       setSaveStatus('saved')
     } catch {
       setSaveStatus('error')
     }
-  }, [])
+  }, [auth.user?.uid])
 
   const updateCard = useCallback(
     (updater: (value: CardDraft) => CardDraft) => {

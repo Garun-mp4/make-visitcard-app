@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 
@@ -18,6 +19,15 @@ export default function PublicCardPage() {
     queryFn: () => loadPublicCard(slug),
     enabled: Boolean(slug),
   })
+
+  useEffect(() => {
+    if (!clientEnv.demoMode && slug && query.data) {
+      void apiRequest(`/api/public/cards/${slug}/events`, {
+        method: 'POST',
+        body: JSON.stringify({ type: 'card_view', source: 'web' }),
+      }).catch(() => undefined)
+    }
+  }, [query.data, slug])
 
   if (!parsedSlug.success)
     return (
@@ -44,10 +54,5 @@ export default function PublicCardPage() {
       />
     )
 
-  if (!clientEnv.demoMode)
-    void apiRequest(`/api/public/cards/${slug}/events`, {
-      method: 'POST',
-      body: JSON.stringify({ type: 'card_view', source: 'web' }),
-    }).catch(() => undefined)
   return <PublicCardRenderer card={query.data} />
 }

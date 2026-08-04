@@ -1,7 +1,7 @@
-import type { CardDraft, Project } from '@shared/types'
+import type { CardView, Project } from '@shared/types'
 import { formatPrice } from '@/lib/utils'
 
-export function ServicePrice({ card, index }: { card: CardDraft; index: number }) {
+export function ServicePrice({ card, index }: { card: CardView; index: number }) {
   const service = card.services[index]
   if (!service || service.priceType === 'hidden') return null
   const prefix = service.priceType === 'from' ? 'от ' : ''

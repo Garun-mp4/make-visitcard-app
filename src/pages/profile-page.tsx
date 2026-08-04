@@ -73,7 +73,7 @@ export default function ProfilePage() {
         fullWidth
         onClick={() => {
           resetDemo()
-          navigate('/')
+          void navigate('/')
         }}
       >
         <LogOut size={17} />

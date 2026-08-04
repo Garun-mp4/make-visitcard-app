@@ -174,6 +174,18 @@ export const cardDraftSchema = z.object({
   lastPublishedAt: z.string().datetime().nullable(),
 })
 
+export const publicCardSchema = z.object({
+  profile: profileSchema,
+  primaryAction: primaryActionSchema,
+  skills: z.array(skillSchema).max(10),
+  links: z.array(linkSchema).max(10),
+  services: z.array(serviceSchema).max(6),
+  projects: z.array(projectSchema).max(6),
+  appearance: appearanceSchema,
+  publication: publicationSchema,
+  updatedAt: z.string().datetime(),
+})
+
 export const leadSchema = z.object({
   senderName: z.string().trim().min(2).max(80),
   senderContact: z.string().trim().min(3).max(160),

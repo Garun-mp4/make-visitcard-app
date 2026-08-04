@@ -4,7 +4,6 @@ import { NavLink, useNavigate } from 'react-router-dom'
 
 import { useCardStore } from '@/app/card-store'
 import { SaveStatus } from '@/components/feedback/save-status'
-import { Button } from '@/components/ui/button'
 import { MiniCardPreview } from '@/features/card/mini-card-preview'
 import { cn } from '@/lib/utils'
 import { useTelegramBack } from '@/hooks/use-telegram'
@@ -22,7 +21,7 @@ const sections = [
 export function EditorShell({ title, children }: PropsWithChildren<{ title: string }>) {
   const navigate = useNavigate()
   const { card, saveNow, saveStatus } = useCardStore()
-  useTelegramBack(() => navigate('/app/editor'))
+  useTelegramBack(() => void navigate('/app/editor'))
   return (
     <main className="min-h-[100dvh] lg:p-8">
       <div className="mx-auto max-w-[1180px]">

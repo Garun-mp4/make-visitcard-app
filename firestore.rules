@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function ownsResource() { return signedIn() && resource.data.ownerUid == request.auth.uid; }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+    }
+
+    match /cards/{uid} {
+      allow read, create, update: if isOwner(uid)
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if isOwner(uid);
+    }
+
+    match /publicCards/{slug} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /slugs/{slug} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /leads/{leadId} {
+      allow read: if ownsResource();
+      allow write: if false;
+    }
+
+    match /cardStats/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+      match /daily/{day} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+    }
+
+    match /rateLimits/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

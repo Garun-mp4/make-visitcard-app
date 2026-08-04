@@ -31,7 +31,7 @@ export default function OnboardingPage() {
       },
     }))
     sessionStorage.removeItem('cardly-onboarding-step')
-    navigate('/app/card')
+    void navigate('/app/card')
   }
   const canContinue =
     step === 1

@@ -89,8 +89,11 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 })
 
+document.documentElement.lang = i18n.language.startsWith('en') ? 'en' : 'ru'
+
 export function changeLocale(locale: 'ru' | 'en') {
   localStorage.setItem('cardly-locale', locale)
+  document.documentElement.lang = locale
   return i18n.changeLanguage(locale)
 }
 

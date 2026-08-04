@@ -1,4 +1,4 @@
-import type { CardDraft } from '@shared/types'
+import type { CardView } from '@shared/types'
 
 export function escapeVCard(value: string): string {
   return value
@@ -8,7 +8,7 @@ export function escapeVCard(value: string): string {
     .replaceAll(',', '\\,')
 }
 
-export function createVCard(card: CardDraft): string {
+export function createVCard(card: CardView): string {
   const publicLinks = card.links.filter((link) => link.enabled && link.public)
   const lines = ['BEGIN:VCARD', 'VERSION:3.0']
   lines.push(`FN:${escapeVCard(card.profile.displayName)}`)
@@ -26,7 +26,7 @@ export function createVCard(card: CardDraft): string {
   return `${lines.join('\r\n')}\r\n`
 }
 
-export function downloadVCard(card: CardDraft): void {
+export function downloadVCard(card: CardView): void {
   const blob = new Blob([createVCard(card)], { type: 'text/vcard;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')

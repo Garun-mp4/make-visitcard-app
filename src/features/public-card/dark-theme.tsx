@@ -1,6 +1,6 @@
 import { ArrowUpRight, Circle } from 'lucide-react'
 
-import type { CardDraft, Project } from '@shared/types'
+import type { CardView, Project } from '@shared/types'
 import { Button } from '@/components/ui/button'
 import { PublicActions } from '@/features/public-card/public-actions'
 import { ProjectCover } from '@/features/public-card/theme-shared'
@@ -11,7 +11,7 @@ export function DarkTheme({
   onProject,
   onLead,
 }: {
-  card: CardDraft
+  card: CardView
   onProject: (project: Project) => void
   onLead: () => void
 }) {

@@ -61,14 +61,12 @@ export function createApp() {
         status: appError.status,
         code: appError.code,
       })
-    res
-      .status(appError.status)
-      .json({
-        code: appError.code,
-        message: appError.message,
-        requestId: req.requestId,
-        ...(appError.details ? { details: appError.details } : {}),
-      })
+    res.status(appError.status).json({
+      code: appError.code,
+      message: appError.message,
+      requestId: req.requestId,
+      ...(appError.details ? { details: appError.details } : {}),
+    })
   }
   app.use(errorHandler)
   return app

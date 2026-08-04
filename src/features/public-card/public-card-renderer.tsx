@@ -1,19 +1,19 @@
 import { useCallback, useState } from 'react'
 
-import type { CardDraft, Project } from '@shared/types'
+import type { CardView, Project } from '@shared/types'
 import { CleanTheme } from '@/features/public-card/clean-theme'
 import { DarkTheme } from '@/features/public-card/dark-theme'
 import { EditorialTheme } from '@/features/public-card/editorial-theme'
 import { LeadForm } from '@/features/public-card/lead-form'
 import { ProjectDialog } from '@/features/public-card/project-dialog'
 
-export function PublicCardRenderer({ card }: { card: CardDraft }) {
+export function PublicCardRenderer({ card }: { card: CardView }) {
   const [project, setProject] = useState<Project | null>(null)
   const [leadOpen, setLeadOpen] = useState(false)
   const closeProject = useCallback(() => setProject(null), [])
   const common = { card, onProject: setProject, onLead: () => setLeadOpen(true) }
   return (
-    <>
+    <div className="contents" data-public-theme={card.appearance.themeId}>
       {card.appearance.themeId === 'dark' ? (
         <DarkTheme {...common} />
       ) : card.appearance.themeId === 'editorial' ? (
@@ -39,6 +39,6 @@ export function PublicCardRenderer({ card }: { card: CardDraft }) {
           </>
         ) : null}
       </dialog>
-    </>
+    </div>
   )
 }

@@ -1,6 +1,6 @@
 import { ArrowRight, Circle } from 'lucide-react'
 
-import type { CardDraft, Project } from '@shared/types'
+import type { CardView, Project } from '@shared/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { PublicActions } from '@/features/public-card/public-actions'
@@ -12,7 +12,7 @@ export function CleanTheme({
   onProject,
   onLead,
 }: {
-  card: CardDraft
+  card: CardView
   onProject: (project: Project) => void
   onLead: () => void
 }) {

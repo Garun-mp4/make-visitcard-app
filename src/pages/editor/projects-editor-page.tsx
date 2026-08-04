@@ -1,5 +1,4 @@
-import { ChevronDown, ChevronUp, Plus, Trash2, Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
 
 import { useCardStore } from '@/app/card-store'
 import { Button } from '@/components/ui/button'

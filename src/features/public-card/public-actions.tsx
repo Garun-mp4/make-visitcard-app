@@ -1,12 +1,12 @@
 import { Bookmark, ContactRound, QrCode, Share2 } from 'lucide-react'
 
-import type { CardDraft } from '@shared/types'
+import type { CardView } from '@shared/types'
 import { IconButton } from '@/components/ui/icon-button'
 import { copyText } from '@/lib/utils'
 import { downloadVCard } from '@/lib/vcard'
 import { telegram } from '@/lib/telegram'
 
-export function PublicActions({ card, onShare }: { card: CardDraft; onShare?: () => void }) {
+export function PublicActions({ card, onShare }: { card: CardView; onShare?: () => void }) {
   const publicUrl = window.location.href
   const share = async () => {
     onShare?.()

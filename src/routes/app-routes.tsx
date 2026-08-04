@@ -1,11 +1,11 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 
-import { clientEnv } from '@/config/client-env'
-import { telegram } from '@/lib/telegram'
 import { OwnerLayout } from '@/layouts/owner-layout'
 import { PageSkeleton } from '@/components/feedback/page-skeleton'
 import { BrowserOwnerBlockPage } from '@/pages/browser-owner-block-page'
+import { useAuth } from '@/features/auth/auth-provider'
+import { SystemState } from '@/components/feedback/system-state'
 
 const LaunchPage = lazy(() => import('@/pages/launch-page'))
 const OnboardingPage = lazy(() => import('@/pages/onboarding-page'))
@@ -24,8 +24,35 @@ const PublicCardPage = lazy(() => import('@/pages/public-card-page'))
 const NotFoundPage = lazy(() => import('@/pages/not-found-page'))
 
 function OwnerGuard() {
-  if (!clientEnv.demoMode && !telegram.available) return <BrowserOwnerBlockPage />
+  const auth = useAuth()
+  if (auth.status === 'browser') return <BrowserOwnerBlockPage />
+  if (auth.status === 'loading') return <PageSkeleton />
+  if (auth.status === 'error')
+    return (
+      <SystemState
+        title="Не удалось войти"
+        description={auth.error ?? 'Повторите попытку внутри Telegram.'}
+        actionLabel="Повторить"
+        onAction={auth.retry}
+      />
+    )
   return <OwnerLayout />
+}
+
+function OnboardingGuard() {
+  const auth = useAuth()
+  if (auth.status === 'browser') return <BrowserOwnerBlockPage />
+  if (auth.status === 'loading') return <PageSkeleton />
+  if (auth.status === 'error')
+    return (
+      <SystemState
+        title="Не удалось войти"
+        description={auth.error ?? 'Повторите попытку внутри Telegram.'}
+        actionLabel="Повторить"
+        onAction={auth.retry}
+      />
+    )
+  return <OnboardingPage />
 }
 
 export function AppRoutes() {
@@ -33,16 +60,7 @@ export function AppRoutes() {
     <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/" element={<LaunchPage />} />
-        <Route
-          path="/app/onboarding"
-          element={
-            clientEnv.demoMode || telegram.available ? (
-              <OnboardingPage />
-            ) : (
-              <BrowserOwnerBlockPage />
-            )
-          }
-        />
+        <Route path="/app/onboarding" element={<OnboardingGuard />} />
         <Route path="/app" element={<OwnerGuard />}>
           <Route index element={<Navigate to="card" replace />} />
           <Route path="card" element={<OwnerHomePage />} />

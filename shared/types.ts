@@ -8,19 +8,26 @@ import type {
   linkSchema,
   profileSchema,
   projectSchema,
+  publicCardSchema,
   serviceSchema,
   skillSchema,
   telegramUserSchema,
 } from './schemas.js'
 
 export type CardDraft = z.infer<typeof cardDraftSchema>
-export type PublicCard = Omit<
+export type PublicCard = z.infer<typeof publicCardSchema>
+export type CardView = Pick<
   CardDraft,
-  'ownerUid' | 'onboardingCompleted' | 'createdAt' | 'lastPublishedAt'
-> & {
-  slug: string
-  published: true
-}
+  | 'profile'
+  | 'primaryAction'
+  | 'skills'
+  | 'links'
+  | 'services'
+  | 'projects'
+  | 'appearance'
+  | 'publication'
+  | 'updatedAt'
+>
 export type CardProfile = z.infer<typeof profileSchema>
 export type Appearance = z.infer<typeof appearanceSchema>
 export type Skill = z.infer<typeof skillSchema>

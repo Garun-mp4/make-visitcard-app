@@ -1,5 +1,3 @@
-import { Send } from 'lucide-react'
-
 import { UnauthorizedState } from '@/components/feedback/system-state'
 import { clientEnv } from '@/config/client-env'
 import { telegram } from '@/lib/telegram'

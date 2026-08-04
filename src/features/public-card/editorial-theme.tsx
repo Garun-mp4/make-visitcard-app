@@ -1,6 +1,6 @@
 import { ArrowUpRight } from 'lucide-react'
 
-import type { CardDraft, Project } from '@shared/types'
+import type { CardView, Project } from '@shared/types'
 import { PublicActions } from '@/features/public-card/public-actions'
 import { ProjectCover } from '@/features/public-card/theme-shared'
 import { formatPrice } from '@/lib/utils'
@@ -11,7 +11,7 @@ export function EditorialTheme({
   onProject,
   onLead,
 }: {
-  card: CardDraft
+  card: CardView
   onProject: (project: Project) => void
   onLead: () => void
 }) {

@@ -1,5 +1,3 @@
-import path from 'node:path'
-
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
@@ -16,8 +14,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, 'src'),
-        '@shared': path.resolve(__dirname, 'shared'),
+        '@': `${import.meta.dirname}/src`,
+        '@shared': `${import.meta.dirname}/shared`,
       },
     },
     server: {
@@ -37,7 +35,10 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(moduleId) {
-            if (moduleId.includes('node_modules/firebase')) return 'firebase'
+            if (moduleId.includes('node_modules/@firebase/auth')) return 'firebase-auth'
+            if (moduleId.includes('node_modules/@firebase/firestore')) return 'firebase-firestore'
+            if (moduleId.includes('node_modules/@firebase/storage')) return 'firebase-storage'
+            if (moduleId.includes('node_modules/firebase')) return 'firebase-entry'
             if (moduleId.includes('node_modules/react')) return 'react'
             return undefined
           },

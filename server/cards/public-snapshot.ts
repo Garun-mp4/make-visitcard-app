@@ -1,5 +1,4 @@
 import { cardDraftSchema } from '@shared/schemas'
-import type { CardDraft } from '@shared/types'
 
 export function sanitizePublicSnapshot(input: unknown) {
   const card = cardDraftSchema.parse(input)

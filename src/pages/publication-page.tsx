@@ -1,6 +1,6 @@
 import { AlertTriangle, Copy, Download, Share2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { slugSchema } from '@shared/schemas'
 import { useCardStore } from '@/app/card-store'
@@ -29,7 +29,8 @@ export default function PublicationPage() {
       return
     }
     setSlugState('checking')
-    timer.current = window.setTimeout(async () => {
+    timer.current = window.setTimeout(() => void checkSlug(), 450)
+    const checkSlug = async () => {
       try {
         if (!clientEnv.demoMode) {
           const result = await apiRequest<{ available: boolean }>('/api/slugs/check', {
@@ -41,7 +42,7 @@ export default function PublicationPage() {
       } catch {
         setSlugState('error')
       }
-    }, 450)
+    }
     return () => {
       if (timer.current) window.clearTimeout(timer.current)
     }

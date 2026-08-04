@@ -24,7 +24,7 @@ export default function BasicEditorPage() {
     const reader = new FileReader()
     reader.onload = () => {
       setUploadError('')
-      update('avatarUrl', String(reader.result))
+      if (typeof reader.result === 'string') update('avatarUrl', reader.result)
     }
     reader.readAsDataURL(file)
   }
