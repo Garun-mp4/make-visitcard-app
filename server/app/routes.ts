@@ -3,7 +3,12 @@ import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import type { NextFunction, Request, Response, Router } from 'express'
 import { z } from 'zod'
 
-import { analyticsEventSchema, cardDraftSchema, leadSchema, slugSchema } from '@shared/schemas'
+import {
+  analyticsEventSchema,
+  cardDraftSchema,
+  leadSchema,
+  slugSchema,
+} from '../../shared/schemas.js'
 import { requireSession } from '../auth/session.js'
 import { requireSessionAuth } from '../auth/session-middleware.js'
 import { createSessionToken, sessionCookie } from '../auth/session.js'

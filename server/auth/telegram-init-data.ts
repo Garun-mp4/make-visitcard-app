@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
-import { telegramUserSchema } from '@shared/schemas'
-import type { TelegramUser } from '@shared/types'
+import { telegramUserSchema } from '../../shared/schemas.js'
+import type { TelegramUser } from '../../shared/types.js'
 import { AppError } from '../utils/app-error.js'
 
 export interface TelegramValidationResult {

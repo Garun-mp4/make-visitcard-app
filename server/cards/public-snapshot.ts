@@ -1,4 +1,4 @@
-import { cardDraftSchema } from '@shared/schemas'
+import { cardDraftSchema } from '../../shared/schemas.js'
 
 export function sanitizePublicSnapshot(input: unknown) {
   const card = cardDraftSchema.parse(input)

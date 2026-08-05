@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { cardDraftSchema, publicCardSchema } from '@shared/schemas'
+import { cardDraftSchema, publicCardSchema } from '../../shared/schemas.js'
 import type {
   AnalyticsEvent,
   CardDraft,
@@ -10,7 +10,7 @@ import type {
   LeadRecord,
   OwnerProfile,
   TelegramUser,
-} from '@shared/types'
+} from '../../shared/types.js'
 import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
 import { AppError } from '../utils/app-error.js'
 import { database } from './client.js'
