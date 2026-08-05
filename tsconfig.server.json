@@ -17,5 +17,5 @@
       "@shared/*": ["shared/*"]
     }
   },
-  "include": ["server", "api", "shared", "scripts", "vitest.rules.config.ts"]
+  "include": ["server", "api", "shared", "scripts"]
 }

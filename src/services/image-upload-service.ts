@@ -1,13 +1,7 @@
-import {
-  deleteObject,
-  getDownloadURL,
-  ref,
-  uploadBytesResumable,
-  type UploadTaskSnapshot,
-} from 'firebase/storage'
+import { upload } from '@vercel/blob/client'
 
 import { clientEnv } from '@/config/client-env'
-import { getFirebaseServices } from '@/services/firebase-client'
+import { apiRequest } from '@/services/api-client'
 
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maxBytes = 5 * 1024 * 1024
@@ -26,20 +20,15 @@ export async function uploadCardImage(
   validateImage(file)
   if (clientEnv.demoMode) return URL.createObjectURL(file)
   const extension = file.type.split('/')[1]
-  const path = `users/${uid}/${kind}/${crypto.randomUUID()}.${extension}`
-  const task = uploadBytesResumable(ref(getFirebaseServices().storage, path), file, {
+  const pathname = `users/${uid}/${kind}/${crypto.randomUUID()}.${extension}`
+  const blob = await upload(pathname, file, {
+    access: 'public',
+    handleUploadUrl: '/api/images/upload',
+    clientPayload: JSON.stringify({ kind }),
     contentType: file.type,
-    cacheControl: 'public,max-age=31536000,immutable',
+    onUploadProgress: ({ percentage }) => onProgress?.(Math.round(percentage)),
   })
-  const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
-    task.on(
-      'state_changed',
-      (state) => onProgress?.(Math.round((state.bytesTransferred / state.totalBytes) * 100)),
-      reject,
-      () => resolve(task.snapshot),
-    )
-  })
-  return getDownloadURL(snapshot.ref)
+  return blob.url
 }
 
 export async function deleteCardImage(pathOrUrl: string): Promise<void> {
@@ -47,5 +36,8 @@ export async function deleteCardImage(pathOrUrl: string): Promise<void> {
     URL.revokeObjectURL(pathOrUrl)
     return
   }
-  await deleteObject(ref(getFirebaseServices().storage, pathOrUrl))
+  await apiRequest('/api/images/delete', {
+    method: 'POST',
+    body: JSON.stringify({ url: pathOrUrl }),
+  })
 }

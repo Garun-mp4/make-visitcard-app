@@ -1,9 +1,7 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-
 import { cardDraftSchema } from '@shared/schemas'
 import type { CardDraft } from '@shared/types'
 import { clientEnv } from '@/config/client-env'
-import { getFirebaseServices } from '@/services/firebase-client'
+import { apiRequest } from '@/services/api-client'
 
 const demoStorageKey = 'cardly-demo-card-v1'
 
@@ -27,20 +25,22 @@ class DemoCardRepository implements CardRepository {
   }
 }
 
-class FirebaseCardRepository implements CardRepository {
-  async load(uid: string): Promise<CardDraft | null> {
-    const snapshot = await getDoc(doc(getFirebaseServices().db, 'cards', uid))
-    if (!snapshot.exists()) return null
-    return cardDraftSchema.parse(snapshot.data())
+class ApiCardRepository implements CardRepository {
+  async load(): Promise<CardDraft | null> {
+    const result = await apiRequest<{ card: CardDraft | null }>('/api/cards/me')
+    return result.card ? cardDraftSchema.parse(result.card) : null
   }
 
   async save(card: CardDraft): Promise<CardDraft> {
     const next = { ...card, updatedAt: new Date().toISOString() }
-    await setDoc(doc(getFirebaseServices().db, 'cards', card.ownerUid), next, { merge: false })
-    return next
+    const result = await apiRequest<{ card: CardDraft }>('/api/cards/me', {
+      method: 'PUT',
+      body: JSON.stringify(next),
+    })
+    return cardDraftSchema.parse(result.card)
   }
 }
 
 export const cardRepository: CardRepository = clientEnv.demoMode
   ? new DemoCardRepository()
-  : new FirebaseCardRepository()
+  : new ApiCardRepository()

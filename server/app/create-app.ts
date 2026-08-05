@@ -9,9 +9,17 @@ import { registerRoutes } from './routes.js'
 
 const knownPaths = [
   '/api/auth/telegram',
+  '/api/cards/me',
   '/api/cards/publish',
   '/api/cards/unpublish',
+  '/api/owner/dashboard',
   '/api/slugs/check',
+  '/api/images/upload',
+  '/api/images/delete',
+  '/api/leads/:id',
+  '/api/public/cards/:slug',
+  '/api/public/cards/:slug/leads',
+  '/api/public/cards/:slug/events',
   '/api/health',
 ]
 
@@ -23,7 +31,7 @@ export function createApp() {
   app.use(originProtection)
   app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
-      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,OPTIONS')
       res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Request-Id')
       res.status(204).end()
       return

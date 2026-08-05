@@ -1,9 +1,8 @@
 import { createHmac } from 'node:crypto'
 import type { Request } from 'express'
-import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 
-import { getAdminServices } from '../firebase/admin.js'
 import { requireServerEnv } from '../config/server-env.js'
+import { database } from '../db/client.js'
 import { AppError } from '../utils/app-error.js'
 
 export function rateLimitHash(
@@ -31,18 +30,17 @@ export async function enforceRateLimit(
   const { RATE_LIMIT_HASH_SECRET } = requireServerEnv('RATE_LIMIT_HASH_SECRET')
   const bucket = Math.floor(Date.now() / 1000 / windowSeconds)
   const key = rateLimitHash(RATE_LIMIT_HASH_SECRET, action, requestIdentity(req), bucket)
-  const ref = getAdminServices().db.collection('rateLimits').doc(key)
-  const expiresAt = Timestamp.fromMillis((bucket + 2) * windowSeconds * 1000)
-  const count = await getAdminServices().db.runTransaction(async (transaction) => {
-    const snapshot = await transaction.get(ref)
-    const nextCount = ((snapshot.data()?.count as number | undefined) ?? 0) + 1
-    transaction.set(
-      ref,
-      { action, count: nextCount, expiresAt, updatedAt: FieldValue.serverTimestamp() },
-      { merge: true },
-    )
-    return nextCount
-  })
-  if (count > limit)
+  const expiresAt = new Date((bucket + 2) * windowSeconds * 1000).toISOString()
+  const sql = await database()
+  const rows = (await sql`
+    INSERT INTO cardly_rate_limits (key, action, count, expires_at, updated_at)
+    VALUES (${key}, ${action}, 1, ${expiresAt}, NOW())
+    ON CONFLICT (key) DO UPDATE SET
+      count = cardly_rate_limits.count + 1,
+      expires_at = EXCLUDED.expires_at,
+      updated_at = NOW()
+    RETURNING count
+  `) as unknown as Array<{ count: number }>
+  if (Number(rows[0]?.count ?? 0) > limit)
     throw new AppError(429, 'rate_limited', 'Слишком много запросов. Попробуйте позже.')
 }

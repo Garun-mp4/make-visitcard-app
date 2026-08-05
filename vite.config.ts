@@ -35,10 +35,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(moduleId) {
-            if (moduleId.includes('node_modules/@firebase/auth')) return 'firebase-auth'
-            if (moduleId.includes('node_modules/@firebase/firestore')) return 'firebase-firestore'
-            if (moduleId.includes('node_modules/@firebase/storage')) return 'firebase-storage'
-            if (moduleId.includes('node_modules/firebase')) return 'firebase-entry'
             if (moduleId.includes('node_modules/react')) return 'react'
             return undefined
           },

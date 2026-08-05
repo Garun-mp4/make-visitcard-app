@@ -19,7 +19,7 @@
 
 - Build onboarding, owner home, editor sections, autosave, publication, statistics/leads and profile.
 - Support 320/390/768/1440 layouts and the Pencil navigation patterns.
-- Implement image validation/preview and a Firebase Storage repository.
+- Implement image validation/preview and a Vercel Blob repository.
 - Done when the demo onboarding/editor/publication flow is fully navigable and persistent.
 
 ## 4. Public card
@@ -28,17 +28,16 @@
 - Add public loading/not-found/unpublished states, project dialog, lead form, analytics events, sharing, QR and vCard.
 - Done when each theme works at 320 and desktop widths and hidden sections leave no gaps.
 
-## 5. Backend and Firebase
+## 5. Backend and Vercel services
 
 - Create centralized Express app and minimal Vercel catch-all entry.
 - Add request IDs, origin checks, JSON limits, safe errors/logging and auth middleware.
-- Implement Telegram initData validation, Firebase custom-token auth and Admin initialization.
-- Implement slug check, publication/unpublication, sanitized snapshots, leads, Telegram notifications, analytics and Firestore-backed rate limiting.
+- Implement Telegram initData validation, signed session cookies and Postgres/Blob initialization.
+- Implement slug check, publication/unpublication, sanitized snapshots, leads, Telegram notifications, analytics and Postgres-backed rate limiting.
 - Done when local `/api/health` and JSON 404 work and server tests cover security-critical helpers.
 
-## 6. Rules, tests and delivery
+## 6. Tests and delivery
 
-- Add deny-by-default Firestore and Storage rules plus emulator configuration/tests.
 - Add unit/component tests and Playwright demo smoke tests.
 - Add Vercel, Firebase, Telegram, architecture, security and operations documentation.
 - Run screenshots against the Pencil references at 320/390/768/1440 and record remaining differences.
@@ -46,7 +45,7 @@
 
 ## Acceptance guardrails
 
-- No `git push`, production deployment, Firebase resource creation or rules deployment.
+- No production deployment or external resource creation during local implementation.
 - No real secrets or service-account JSON in the repository.
 - Demo bypass is development-only and never accepted by the production API.
 - Public snapshots contain only enabled and explicitly public data.

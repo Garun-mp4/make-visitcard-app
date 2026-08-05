@@ -1,14 +1,28 @@
+import { del } from '@vercel/blob'
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import type { NextFunction, Request, Response, Router } from 'express'
-import { FieldValue } from 'firebase-admin/firestore'
 import { z } from 'zod'
 
 import { analyticsEventSchema, cardDraftSchema, leadSchema, slugSchema } from '@shared/schemas'
+import { requireSession } from '../auth/session.js'
+import { requireSessionAuth } from '../auth/session-middleware.js'
+import { createSessionToken, sessionCookie } from '../auth/session.js'
 import { validateTelegramInitData } from '../auth/telegram-init-data.js'
-import { requireFirebaseAuth } from '../auth/firebase-auth.js'
-import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
-import { getServerEnv, requireServerEnv } from '../config/server-env.js'
-import { getAdminServices } from '../firebase/admin.js'
-import { enforceRateLimit } from '../rate-limit/firestore-rate-limit.js'
+import { requireServerEnv } from '../config/server-env.js'
+import {
+  createLead,
+  getCard,
+  getOwnerDashboard,
+  getPublicCard,
+  isSlugAvailable,
+  publishCard,
+  recordAnalyticsEvent,
+  saveCard,
+  unpublishCard,
+  updateLeadStatus,
+  upsertTelegramUser,
+} from '../db/repository.js'
+import { enforceRateLimit } from '../rate-limit/database-rate-limit.js'
 import { notifyLeadOwner } from '../telegram/bot.js'
 import { AppError } from '../utils/app-error.js'
 import { logger } from '../utils/logger.js'
@@ -19,10 +33,21 @@ const route = (handler: AsyncHandler) => (req: Request, res: Response, next: Nex
 
 const initDataBody = z.object({ initData: z.string().min(1).max(16_384) })
 const slugBody = z.object({ slug: slugSchema })
+const leadStatusBody = z.object({ status: z.enum(['new', 'read', 'archived']) })
+const imageDeleteBody = z.object({ url: z.string().url().max(2048) })
+
+function appOrigin(req: Request): string {
+  return new URL(`${req.protocol}://${req.get('host')}`).origin
+}
 
 export function registerRoutes(router: Router) {
   router.get('/api/health', (_req, res) =>
-    res.json({ ok: true, service: 'cardly-api', timestamp: new Date().toISOString() }),
+    res.json({
+      ok: true,
+      service: 'cardly-api',
+      storage: 'vercel',
+      timestamp: new Date().toISOString(),
+    }),
   )
 
   router.post(
@@ -30,43 +55,52 @@ export function registerRoutes(router: Router) {
     route(async (req, res) => {
       await enforceRateLimit(req, 'telegram-auth', 12, 60)
       const body = initDataBody.parse(req.body)
-      const env = requireServerEnv('TELEGRAM_BOT_TOKEN')
+      const env = requireServerEnv('TELEGRAM_BOT_TOKEN', 'SESSION_SECRET')
       const result = validateTelegramInitData(
         body.initData,
         env.TELEGRAM_BOT_TOKEN,
         env.TELEGRAM_INIT_DATA_MAX_AGE_SECONDS,
       )
-      const uid = `tg_${result.user.id}`
-      const userRef = getAdminServices().db.collection('users').doc(uid)
-      await userRef.set(
-        {
-          uid,
-          telegramId: String(result.user.id),
-          firstName: result.user.first_name,
-          lastName: result.user.last_name ?? '',
-          username: result.user.username ?? '',
-          photoUrl: result.user.photo_url ?? '',
-          languageCode: result.user.language_code ?? 'ru',
-          isPremium: result.user.is_premium ?? false,
-          updatedAt: FieldValue.serverTimestamp(),
-          lastLoginAt: FieldValue.serverTimestamp(),
-          createdAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      )
-      const customToken = await getAdminServices().auth.createCustomToken(uid)
-      res.json({
-        customToken,
-        user: {
-          uid,
-          firstName: result.user.first_name,
-          lastName: result.user.last_name ?? '',
-          username: result.user.username ?? '',
-          photoUrl: result.user.photo_url ?? '',
-          languageCode: result.user.language_code ?? 'ru',
-          isPremium: result.user.is_premium ?? false,
-        },
-      })
+      const user = await upsertTelegramUser(result.user)
+      const token = createSessionToken(user.uid)
+      res.setHeader('Set-Cookie', sessionCookie(token, env.APP_ENV === 'production'))
+      res.json({ user })
+    }),
+  )
+
+  router.get(
+    '/api/cards/me',
+    requireSessionAuth,
+    route(async (req, res) => {
+      res.json({ card: await getCard(req.auth!.uid) })
+    }),
+  )
+
+  router.put(
+    '/api/cards/me',
+    requireSessionAuth,
+    route(async (req, res) => {
+      const input = cardDraftSchema.parse(req.body)
+      res.json({ card: await saveCard(req.auth!.uid, input) })
+    }),
+  )
+
+  router.get(
+    '/api/owner/dashboard',
+    requireSessionAuth,
+    route(async (req, res) => {
+      res.json(await getOwnerDashboard(req.auth!.uid))
+    }),
+  )
+
+  router.patch(
+    '/api/leads/:id',
+    requireSessionAuth,
+    route(async (req, res) => {
+      const id = z.string().uuid().parse(req.params.id)
+      const { status } = leadStatusBody.parse(req.body)
+      await updateLeadStatus(req.auth!.uid, id, status)
+      res.json({ ok: true })
     }),
   )
 
@@ -75,70 +109,28 @@ export function registerRoutes(router: Router) {
     route(async (req, res) => {
       await enforceRateLimit(req, 'slug-check', 30, 60)
       const { slug } = slugBody.parse(req.body)
-      const snapshot = await getAdminServices().db.collection('slugs').doc(slug).get()
-      res.json({ slug, available: !snapshot.exists })
+      let uid: string | undefined
+      try {
+        uid = requireSession(req).uid
+      } catch {
+        uid = undefined
+      }
+      res.json({ slug, available: await isSlugAvailable(slug, uid) })
     }),
   )
 
   router.post(
     '/api/cards/publish',
-    requireFirebaseAuth,
+    requireSessionAuth,
     route(async (req, res) => {
-      const uid = req.auth!.uid
       const { slug } = slugBody.parse(req.body)
-      const db = getAdminServices().db
-      const cardRef = db.collection('cards').doc(uid)
-      const cardSnapshot = await cardRef.get()
-      if (!cardSnapshot.exists)
-        throw new AppError(404, 'draft_not_found', 'Черновик визитки не найден')
-      const card = cardDraftSchema.parse({ ...cardSnapshot.data(), ownerUid: uid })
-      const now = new Date().toISOString()
-      const nextCard = {
-        ...card,
-        publication: {
-          ...card.publication,
-          slug,
-          published: true,
-          publishedAt: card.publication.publishedAt ?? now,
-          updatedAt: now,
-        },
-        lastPublishedAt: now,
-      }
-      const publicSnapshot = sanitizePublicSnapshot(nextCard)
-      await db.runTransaction(async (transaction) => {
-        const slugRef = db.collection('slugs').doc(slug)
-        const slugRecord = await transaction.get(slugRef)
-        const existingOwner = slugRecord.data()?.ownerUid as string | undefined
-        if (slugRecord.exists && existingOwner !== uid)
-          throw new AppError(409, 'slug_unavailable', 'Этот адрес уже занят')
-        if (card.publication.slug && card.publication.slug !== slug) {
-          const oldSlugRef = db.collection('slugs').doc(card.publication.slug)
-          const oldSlug = await transaction.get(oldSlugRef)
-          if (oldSlug.data()?.ownerUid === uid) transaction.delete(oldSlugRef)
-          transaction.delete(db.collection('publicCards').doc(card.publication.slug))
-        }
-        transaction.set(
-          slugRef,
-          {
-            ownerUid: uid,
-            createdAt: slugRecord.data()?.createdAt ?? FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        )
-        transaction.set(db.collection('publicCards').doc(slug), publicSnapshot)
-        transaction.set(cardRef, nextCard, { merge: true })
-      })
-      const baseUrl =
-        getServerEnv().APP_ENV === 'production'
-          ? new URL(req.protocol + '://' + req.get('host')).origin
-          : new URL(req.protocol + '://' + req.get('host')).origin
+      await publishCard(req.auth!.uid, slug)
       const botUsername = process.env.VITE_TELEGRAM_BOT_USERNAME ?? 'cardly_bot'
       const shortName = process.env.VITE_TELEGRAM_APP_SHORT_NAME ?? 'app'
       res.json({
         published: true,
         slug,
-        publicUrl: `${baseUrl}/c/${slug}`,
+        publicUrl: `${appOrigin(req)}/c/${slug}`,
         telegramUrl: `https://t.me/${botUsername}/${shortName}?startapp=${slug}`,
       })
     }),
@@ -146,28 +138,20 @@ export function registerRoutes(router: Router) {
 
   router.post(
     '/api/cards/unpublish',
-    requireFirebaseAuth,
+    requireSessionAuth,
     route(async (req, res) => {
-      const uid = req.auth!.uid
-      const db = getAdminServices().db
-      const cardRef = db.collection('cards').doc(uid)
-      const cardSnapshot = await cardRef.get()
-      if (!cardSnapshot.exists)
-        throw new AppError(404, 'draft_not_found', 'Черновик визитки не найден')
-      const slug = String(cardSnapshot.data()?.publication?.slug ?? '')
-      await db.runTransaction(async (transaction) => {
-        if (slug) transaction.delete(db.collection('publicCards').doc(slug))
-        transaction.set(
-          cardRef,
-          {
-            'publication.published': false,
-            'publication.updatedAt': new Date().toISOString(),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        )
-      })
-      res.json({ published: false, slugReserved: Boolean(slug) })
+      const result = await unpublishCard(req.auth!.uid)
+      res.json({ published: false, slugReserved: Boolean(result.slug) })
+    }),
+  )
+
+  router.get(
+    '/api/public/cards/:slug',
+    route(async (req, res) => {
+      const slug = slugSchema.parse(req.params.slug)
+      const card = await getPublicCard(slug)
+      if (!card) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+      res.json({ card })
     }),
   )
 
@@ -178,53 +162,23 @@ export function registerRoutes(router: Router) {
       const slug = slugSchema.parse(req.params.slug)
       const input = leadSchema.parse(req.body)
       if (input.website) throw new AppError(400, 'spam_detected', 'Не удалось отправить заявку')
-      const db = getAdminServices().db
-      const [publicCard, slugRecord] = await Promise.all([
-        db.collection('publicCards').doc(slug).get(),
-        db.collection('slugs').doc(slug).get(),
-      ])
-      if (!publicCard.exists || publicCard.data()?.publication?.published === false)
-        throw new AppError(404, 'card_not_found', 'Визитка не найдена')
-      const ownerUid = slugRecord.data()?.ownerUid as string | undefined
-      if (!ownerUid) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
-      const leadRef = db.collection('leads').doc()
-      await db.runTransaction(async (transaction) => {
-        transaction.set(leadRef, {
-          ownerUid,
-          cardSlug: slug,
-          senderName: input.senderName,
-          senderContact: input.senderContact,
+      const lead = await createLead(slug, input)
+      try {
+        await notifyLeadOwner({
+          telegramId: lead.telegramId,
+          slug,
+          name: input.senderName,
+          contact: input.senderContact,
           message: input.message,
-          source: input.source,
-          status: 'new',
-          createdAt: FieldValue.serverTimestamp(),
+          createdAt: new Date().toISOString(),
         })
-        transaction.set(
-          db.collection('cardStats').doc(ownerUid),
-          { totalLeads: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
-          { merge: true },
-        )
-      })
-      const user = await db.collection('users').doc(ownerUid).get()
-      const telegramId = user.data()?.telegramId as string | undefined
-      if (telegramId) {
-        try {
-          await notifyLeadOwner({
-            telegramId,
-            slug,
-            name: input.senderName,
-            contact: input.senderContact,
-            message: input.message,
-            createdAt: new Date().toISOString(),
-          })
-        } catch {
-          logger.warn('Telegram lead notification failed', {
-            requestId: req.requestId,
-            route: req.path,
-          })
-        }
+      } catch {
+        logger.warn('Telegram lead notification failed', {
+          requestId: req.requestId,
+          route: req.path,
+        })
       }
-      res.status(201).json({ ok: true, leadId: leadRef.id })
+      res.status(201).json({ ok: true, leadId: lead.id })
     }),
   )
 
@@ -233,37 +187,55 @@ export function registerRoutes(router: Router) {
     route(async (req, res) => {
       await enforceRateLimit(req, 'analytics-event', 90, 60)
       const slug = slugSchema.parse(req.params.slug)
-      const event = analyticsEventSchema.parse(req.body)
-      const db = getAdminServices().db
-      const slugRecord = await db.collection('slugs').doc(slug).get()
-      const ownerUid = slugRecord.data()?.ownerUid as string | undefined
-      if (!ownerUid) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
-      const fields: Record<typeof event.type, string> = {
-        card_view: 'totalViews',
-        primary_cta_click: 'totalPrimaryClicks',
-        link_click: 'totalLinkClicks',
-        project_open: 'totalProjectOpens',
-        lead_submit: 'totalLeads',
-        share: 'totalShares',
-      }
-      const day = new Date().toISOString().slice(0, 10)
-      const batch = db.batch()
-      batch.set(
-        db.collection('cardStats').doc(ownerUid),
-        { [fields[event.type]]: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() },
-        { merge: true },
-      )
-      batch.set(
-        db.collection('cardStats').doc(ownerUid).collection('daily').doc(day),
-        {
-          date: day,
-          [fields[event.type]]: FieldValue.increment(1),
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      )
-      await batch.commit()
+      await recordAnalyticsEvent(slug, analyticsEventSchema.parse(req.body))
       res.status(202).json({ ok: true })
+    }),
+  )
+
+  router.post(
+    '/api/images/upload',
+    route(async (req, res) => {
+      const body = req.body as HandleUploadBody
+      const session = body.type === 'blob.generate-client-token' ? requireSession(req) : null
+      const response = await handleUpload({
+        request: req,
+        body,
+        onBeforeGenerateToken: async (pathname, clientPayload) => {
+          if (!session) throw new AppError(401, 'unauthorized', 'Требуется авторизация')
+          const payload = z
+            .object({ kind: z.enum(['avatar', 'project']) })
+            .parse(JSON.parse(clientPayload ?? '{}') as unknown)
+          const prefix = `users/${session.uid}/${payload.kind}/`
+          if (!pathname.startsWith(prefix))
+            throw new AppError(403, 'invalid_blob_path', 'Недопустимый путь файла')
+          return {
+            allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp'],
+            maximumSizeInBytes: 5 * 1024 * 1024,
+            addRandomSuffix: true,
+            cacheControlMaxAge: 31_536_000,
+            tokenPayload: JSON.stringify({ uid: session.uid, kind: payload.kind }),
+          }
+        },
+        onUploadCompleted: async () => undefined,
+      })
+      res.json(response)
+    }),
+  )
+
+  router.post(
+    '/api/images/delete',
+    requireSessionAuth,
+    route(async (req, res) => {
+      requireServerEnv('BLOB_READ_WRITE_TOKEN')
+      const { url } = imageDeleteBody.parse(req.body)
+      const parsed = new URL(url)
+      if (
+        !parsed.hostname.endsWith('.blob.vercel-storage.com') ||
+        !parsed.pathname.startsWith(`/users/${req.auth!.uid}/`)
+      )
+        throw new AppError(403, 'invalid_blob_url', 'Этот файл нельзя удалить')
+      await del(url)
+      res.json({ ok: true })
     }),
   )
 }

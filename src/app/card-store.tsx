@@ -11,8 +11,10 @@ import {
 
 import { demoCard, demoLeads, demoOwner, demoStats } from '@shared/demo-data'
 import type { CardDraft, CardStats, LeadRecord, OwnerProfile } from '@shared/types'
+import { clientEnv } from '@/config/client-env'
 import { cardRepository } from '@/services/card-repository'
 import { useAuth } from '@/features/auth/auth-provider'
+import { loadOwnerDashboard, saveLeadStatus } from '@/services/owner-dashboard-service'
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
 
@@ -34,6 +36,8 @@ const CardStoreContext = createContext<CardStoreValue | null>(null)
 export function CardStoreProvider({ children }: PropsWithChildren) {
   const auth = useAuth()
   const [card, setCard] = useState<CardDraft>(demoCard)
+  const [owner, setOwner] = useState<OwnerProfile>(demoOwner)
+  const [stats, setStats] = useState<CardStats>(demoStats)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [leads, setLeads] = useState(demoLeads)
   const [online, setOnline] = useState(navigator.onLine)
@@ -45,8 +49,17 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
     if (auth.status !== 'demo' && auth.status !== 'authenticated') return
     let active = true
     const ownerUid = auth.user?.uid ?? demoOwner.uid
-    void cardRepository.load(ownerUid).then((saved) => {
-      if (active) setCard(saved ?? { ...demoCard, ownerUid })
+    void Promise.all([
+      cardRepository.load(ownerUid),
+      auth.status === 'authenticated' ? loadOwnerDashboard() : Promise.resolve(null),
+    ]).then(([saved, dashboard]) => {
+      if (!active) return
+      setCard(saved ?? { ...demoCard, ownerUid })
+      if (dashboard) {
+        setOwner(dashboard.owner)
+        setStats(dashboard.stats)
+        setLeads(dashboard.leads)
+      }
     })
     return () => {
       active = false
@@ -113,8 +126,8 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
   const value = useMemo<CardStoreValue>(
     () => ({
       card,
-      owner: demoOwner,
-      stats: demoStats,
+      owner,
+      stats,
       leads,
       saveStatus,
       online,
@@ -123,12 +136,17 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
       resetDemo: () => {
         localStorage.removeItem('cardly-demo-card-v1')
         setCard(demoCard)
+        setOwner(demoOwner)
+        setStats(demoStats)
+        setLeads(demoLeads)
         setSaveStatus('idle')
       },
-      setLeadStatus: (id, status) =>
-        setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status } : lead))),
+      setLeadStatus: (id, status) => {
+        setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status } : lead)))
+        if (!clientEnv.demoMode) void saveLeadStatus(id, status)
+      },
     }),
-    [card, leads, online, saveNow, saveStatus, updateCard],
+    [card, leads, online, owner, saveNow, saveStatus, stats, updateCard],
   )
 
   return <CardStoreContext.Provider value={value}>{children}</CardStoreContext.Provider>

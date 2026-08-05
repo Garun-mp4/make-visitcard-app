@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { rateLimitHash } from './firestore-rate-limit.js'
+import { rateLimitHash } from './database-rate-limit.js'
 
 describe('rateLimitHash', () => {
   it('is stable but separates identity and time buckets', () => {

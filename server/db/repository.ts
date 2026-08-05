@@ -1,0 +1,354 @@
+import { randomUUID } from 'node:crypto'
+
+import { cardDraftSchema, publicCardSchema } from '@shared/schemas'
+import type {
+  AnalyticsEvent,
+  CardDraft,
+  CardStats,
+  CardView,
+  LeadInput,
+  LeadRecord,
+  OwnerProfile,
+  TelegramUser,
+} from '@shared/types'
+import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
+import { AppError } from '../utils/app-error.js'
+import { database } from './client.js'
+
+interface JsonRow {
+  data: unknown
+}
+
+interface UserRow {
+  uid: string
+  telegram_id: string
+  first_name: string
+  last_name: string
+  username: string
+  photo_url: string
+  language_code: string
+  is_premium: boolean
+}
+
+function rowsOf<T>(value: unknown): T[] {
+  return value as T[]
+}
+
+function mapOwner(row: UserRow): OwnerProfile {
+  return {
+    uid: row.uid,
+    telegramId: row.telegram_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    username: row.username,
+    photoUrl: row.photo_url,
+    languageCode: row.language_code,
+    isPremium: row.is_premium,
+    platform: 'Telegram Mini App',
+  }
+}
+
+export async function upsertTelegramUser(user: TelegramUser): Promise<OwnerProfile> {
+  const sql = await database()
+  const uid = `tg_${user.id}`
+  const rows = rowsOf<UserRow>(
+    await sql`
+    INSERT INTO cardly_users (
+      uid, telegram_id, first_name, last_name, username, photo_url, language_code,
+      is_premium, updated_at, last_login_at
+    ) VALUES (
+      ${uid}, ${String(user.id)}, ${user.first_name}, ${user.last_name ?? ''},
+      ${user.username ?? ''}, ${user.photo_url ?? ''}, ${user.language_code ?? 'ru'},
+      ${user.is_premium ?? false}, NOW(), NOW()
+    )
+    ON CONFLICT (uid) DO UPDATE SET
+      telegram_id = EXCLUDED.telegram_id,
+      first_name = EXCLUDED.first_name,
+      last_name = EXCLUDED.last_name,
+      username = EXCLUDED.username,
+      photo_url = EXCLUDED.photo_url,
+      language_code = EXCLUDED.language_code,
+      is_premium = EXCLUDED.is_premium,
+      updated_at = NOW(),
+      last_login_at = NOW()
+    RETURNING uid, telegram_id, first_name, last_name, username, photo_url, language_code, is_premium
+  `,
+  )
+  return mapOwner(rows[0])
+}
+
+export async function getOwner(uid: string): Promise<OwnerProfile> {
+  const sql = await database()
+  const rows = rowsOf<UserRow>(
+    await sql`
+    SELECT uid, telegram_id, first_name, last_name, username, photo_url, language_code, is_premium
+    FROM cardly_users WHERE uid = ${uid} LIMIT 1
+  `,
+  )
+  if (!rows[0]) throw new AppError(404, 'owner_not_found', 'Профиль владельца не найден')
+  return mapOwner(rows[0])
+}
+
+export async function getCard(uid: string): Promise<CardDraft | null> {
+  const sql = await database()
+  const rows = rowsOf<JsonRow>(
+    await sql`SELECT data FROM cardly_cards WHERE owner_uid = ${uid} LIMIT 1`,
+  )
+  if (!rows[0]) return null
+  return cardDraftSchema.parse(rows[0].data)
+}
+
+export async function saveCard(uid: string, input: CardDraft): Promise<CardDraft> {
+  const sql = await database()
+  const now = new Date().toISOString()
+  const card = cardDraftSchema.parse({ ...input, ownerUid: uid, updatedAt: now })
+  await sql`
+    INSERT INTO cardly_cards (owner_uid, data, slug, published, public_data, updated_at)
+    VALUES (
+      ${uid}, ${JSON.stringify(card)}::jsonb,
+      ${card.publication.slug || null}, ${card.publication.published},
+      ${card.publication.published ? JSON.stringify(sanitizePublicSnapshot(card)) : null}::jsonb,
+      NOW()
+    )
+    ON CONFLICT (owner_uid) DO UPDATE SET
+      data = EXCLUDED.data,
+      slug = EXCLUDED.slug,
+      published = EXCLUDED.published,
+      public_data = EXCLUDED.public_data,
+      updated_at = NOW()
+  `
+  return card
+}
+
+export async function isSlugAvailable(slug: string, uid?: string): Promise<boolean> {
+  const sql = await database()
+  const rows = uid
+    ? await sql`SELECT owner_uid FROM cardly_cards WHERE slug = ${slug} AND owner_uid <> ${uid} LIMIT 1`
+    : await sql`SELECT owner_uid FROM cardly_cards WHERE slug = ${slug} LIMIT 1`
+  return rowsOf<Record<string, unknown>>(rows).length === 0
+}
+
+export async function publishCard(uid: string, slug: string): Promise<CardDraft> {
+  const current = await getCard(uid)
+  if (!current) throw new AppError(404, 'draft_not_found', 'Черновик визитки не найден')
+  const now = new Date().toISOString()
+  const card = cardDraftSchema.parse({
+    ...current,
+    publication: {
+      ...current.publication,
+      slug,
+      published: true,
+      publishedAt: current.publication.publishedAt ?? now,
+      updatedAt: now,
+    },
+    lastPublishedAt: now,
+    updatedAt: now,
+  })
+  const sql = await database()
+  try {
+    await sql`
+      UPDATE cardly_cards SET
+        data = ${JSON.stringify(card)}::jsonb,
+        slug = ${slug},
+        published = TRUE,
+        public_data = ${JSON.stringify(sanitizePublicSnapshot(card))}::jsonb,
+        updated_at = NOW()
+      WHERE owner_uid = ${uid}
+    `
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505')
+      throw new AppError(409, 'slug_unavailable', 'Этот адрес уже занят')
+    throw error
+  }
+  return card
+}
+
+export async function unpublishCard(uid: string): Promise<{ card: CardDraft; slug: string }> {
+  const current = await getCard(uid)
+  if (!current) throw new AppError(404, 'draft_not_found', 'Черновик визитки не найден')
+  const now = new Date().toISOString()
+  const card = cardDraftSchema.parse({
+    ...current,
+    publication: { ...current.publication, published: false, updatedAt: now },
+    updatedAt: now,
+  })
+  const sql = await database()
+  await sql`
+    UPDATE cardly_cards SET
+      data = ${JSON.stringify(card)}::jsonb,
+      published = FALSE,
+      public_data = NULL,
+      updated_at = NOW()
+    WHERE owner_uid = ${uid}
+  `
+  return { card, slug: current.publication.slug }
+}
+
+export async function getPublicCard(slug: string): Promise<CardView | null> {
+  const sql = await database()
+  const rows = rowsOf<JsonRow>(
+    await sql`
+    SELECT public_data AS data FROM cardly_cards
+    WHERE slug = ${slug} AND published = TRUE AND public_data IS NOT NULL LIMIT 1
+  `,
+  )
+  if (!rows[0]) return null
+  const parsed = publicCardSchema.safeParse(rows[0].data)
+  return parsed.success ? parsed.data : null
+}
+
+export async function createLead(slug: string, input: LeadInput) {
+  const sql = await database()
+  const owners = rowsOf<{ owner_uid: string; telegram_id: string }>(
+    await sql`
+    SELECT c.owner_uid, u.telegram_id
+    FROM cardly_cards c JOIN cardly_users u ON u.uid = c.owner_uid
+    WHERE c.slug = ${slug} AND c.published = TRUE LIMIT 1
+  `,
+  )
+  const owner = owners[0]
+  if (!owner) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+  const id = randomUUID()
+  await sql.transaction([
+    sql`
+      INSERT INTO cardly_leads (
+        id, owner_uid, card_slug, sender_name, sender_contact, message, source
+      ) VALUES (
+        ${id}, ${owner.owner_uid}, ${slug}, ${input.senderName}, ${input.senderContact},
+        ${input.message}, ${input.source}
+      )
+    `,
+    sql`
+      INSERT INTO cardly_stats (owner_uid, total_leads, updated_at)
+      VALUES (${owner.owner_uid}, 1, NOW())
+      ON CONFLICT (owner_uid) DO UPDATE SET
+        total_leads = cardly_stats.total_leads + 1,
+        updated_at = NOW()
+    `,
+  ])
+  return { id, ownerUid: owner.owner_uid, telegramId: owner.telegram_id }
+}
+
+type MetricColumn =
+  | 'total_views'
+  | 'total_primary_clicks'
+  | 'total_link_clicks'
+  | 'total_project_opens'
+  | 'total_leads'
+  | 'total_shares'
+
+export async function recordAnalyticsEvent(slug: string, event: AnalyticsEvent): Promise<void> {
+  const sql = await database()
+  const rows = rowsOf<{ owner_uid?: string }>(
+    await sql`
+    SELECT owner_uid FROM cardly_cards WHERE slug = ${slug} AND published = TRUE LIMIT 1
+  `,
+  )
+  const uid = rows[0]?.owner_uid
+  if (!uid) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+  const column = {
+    card_view: 'total_views',
+    primary_cta_click: 'total_primary_clicks',
+    link_click: 'total_link_clicks',
+    project_open: 'total_project_opens',
+    lead_submit: 'total_leads',
+    share: 'total_shares',
+  }[event.type] as MetricColumn
+  const overallQueries = {
+    total_views: sql`INSERT INTO cardly_stats (owner_uid, total_views) VALUES (${uid}, 1) ON CONFLICT (owner_uid) DO UPDATE SET total_views = cardly_stats.total_views + 1, updated_at = NOW()`,
+    total_primary_clicks: sql`INSERT INTO cardly_stats (owner_uid, total_primary_clicks) VALUES (${uid}, 1) ON CONFLICT (owner_uid) DO UPDATE SET total_primary_clicks = cardly_stats.total_primary_clicks + 1, updated_at = NOW()`,
+    total_link_clicks: sql`INSERT INTO cardly_stats (owner_uid, total_link_clicks) VALUES (${uid}, 1) ON CONFLICT (owner_uid) DO UPDATE SET total_link_clicks = cardly_stats.total_link_clicks + 1, updated_at = NOW()`,
+    total_project_opens: sql`INSERT INTO cardly_stats (owner_uid, total_project_opens) VALUES (${uid}, 1) ON CONFLICT (owner_uid) DO UPDATE SET total_project_opens = cardly_stats.total_project_opens + 1, updated_at = NOW()`,
+    total_leads: sql`INSERT INTO cardly_stats (owner_uid, total_leads) VALUES (${uid}, 1) ON CONFLICT (owner_uid) DO UPDATE SET total_leads = cardly_stats.total_leads + 1, updated_at = NOW()`,
+    total_shares: sql`INSERT INTO cardly_stats (owner_uid, total_shares) VALUES (${uid}, 1) ON CONFLICT (owner_uid) DO UPDATE SET total_shares = cardly_stats.total_shares + 1, updated_at = NOW()`,
+  }
+  const dailyQueries = {
+    total_views: sql`INSERT INTO cardly_daily_stats (owner_uid, day, views) VALUES (${uid}, CURRENT_DATE, 1) ON CONFLICT (owner_uid, day) DO UPDATE SET views = cardly_daily_stats.views + 1, updated_at = NOW()`,
+    total_primary_clicks: sql`INSERT INTO cardly_daily_stats (owner_uid, day, primary_clicks) VALUES (${uid}, CURRENT_DATE, 1) ON CONFLICT (owner_uid, day) DO UPDATE SET primary_clicks = cardly_daily_stats.primary_clicks + 1, updated_at = NOW()`,
+    total_link_clicks: sql`INSERT INTO cardly_daily_stats (owner_uid, day, link_clicks) VALUES (${uid}, CURRENT_DATE, 1) ON CONFLICT (owner_uid, day) DO UPDATE SET link_clicks = cardly_daily_stats.link_clicks + 1, updated_at = NOW()`,
+    total_project_opens: sql`INSERT INTO cardly_daily_stats (owner_uid, day, project_opens) VALUES (${uid}, CURRENT_DATE, 1) ON CONFLICT (owner_uid, day) DO UPDATE SET project_opens = cardly_daily_stats.project_opens + 1, updated_at = NOW()`,
+    total_leads: sql`INSERT INTO cardly_daily_stats (owner_uid, day, leads) VALUES (${uid}, CURRENT_DATE, 1) ON CONFLICT (owner_uid, day) DO UPDATE SET leads = cardly_daily_stats.leads + 1, updated_at = NOW()`,
+    total_shares: sql`INSERT INTO cardly_daily_stats (owner_uid, day, shares) VALUES (${uid}, CURRENT_DATE, 1) ON CONFLICT (owner_uid, day) DO UPDATE SET shares = cardly_daily_stats.shares + 1, updated_at = NOW()`,
+  }
+  await sql.transaction([overallQueries[column], dailyQueries[column]])
+}
+
+interface StatsRow {
+  total_views: number
+  total_primary_clicks: number
+  total_link_clicks: number
+  total_project_opens: number
+  total_leads: number
+  total_shares: number
+}
+
+export async function getOwnerDashboard(uid: string): Promise<{
+  owner: OwnerProfile
+  stats: CardStats
+  leads: LeadRecord[]
+}> {
+  const sql = await database()
+  const [owner, statsRowsRaw, dailyRowsRaw, leadRowsRaw] = await Promise.all([
+    getOwner(uid),
+    sql`SELECT * FROM cardly_stats WHERE owner_uid = ${uid} LIMIT 1`,
+    sql`SELECT TO_CHAR(day, 'DD.MM') AS date, views FROM cardly_daily_stats WHERE owner_uid = ${uid} ORDER BY day DESC LIMIT 30`,
+    sql`SELECT id, owner_uid, card_slug, sender_name, sender_contact, message, source, status, created_at FROM cardly_leads WHERE owner_uid = ${uid} ORDER BY created_at DESC LIMIT 100`,
+  ])
+  const statsRows = rowsOf<StatsRow>(statsRowsRaw)
+  const dailyRows = rowsOf<{ date: string; views: number }>(dailyRowsRaw)
+  const leadRows = rowsOf<Record<string, unknown>>(leadRowsRaw)
+  const row = statsRows[0] ?? {
+    total_views: 0,
+    total_primary_clicks: 0,
+    total_link_clicks: 0,
+    total_project_opens: 0,
+    total_leads: 0,
+    total_shares: 0,
+  }
+  const daily = [...dailyRows]
+    .reverse()
+    .map((item) => ({ date: String(item.date), views: Number(item.views) }))
+  const stats: CardStats = {
+    totalViews: Number(row.total_views),
+    totalPrimaryClicks: Number(row.total_primary_clicks),
+    totalLinkClicks: Number(row.total_link_clicks),
+    totalProjectOpens: Number(row.total_project_opens),
+    totalLeads: Number(row.total_leads),
+    totalShares: Number(row.total_shares),
+    daily,
+    popularActions: [
+      { label: 'Основная кнопка', value: Number(row.total_primary_clicks) },
+      { label: 'Ссылки', value: Number(row.total_link_clicks) },
+      { label: 'Проекты', value: Number(row.total_project_opens) },
+      { label: 'Поделиться', value: Number(row.total_shares) },
+    ],
+  }
+  const leads = leadRows.map((lead: Record<string, unknown>) => ({
+    id: String(lead.id),
+    ownerUid: String(lead.owner_uid),
+    cardSlug: String(lead.card_slug),
+    senderName: String(lead.sender_name),
+    senderContact: String(lead.sender_contact),
+    message: String(lead.message),
+    source: lead.source as LeadRecord['source'],
+    status: lead.status as LeadRecord['status'],
+    createdAt: new Date(String(lead.created_at)).toISOString(),
+  }))
+  return { owner, stats, leads }
+}
+
+export async function updateLeadStatus(
+  uid: string,
+  id: string,
+  status: LeadRecord['status'],
+): Promise<void> {
+  const sql = await database()
+  const rows = rowsOf<{ id: string }>(
+    await sql`
+    UPDATE cardly_leads SET status = ${status}
+    WHERE id = ${id} AND owner_uid = ${uid}
+    RETURNING id
+  `,
+  )
+  if (!rows[0]) throw new AppError(404, 'lead_not_found', 'Заявка не найдена')
+}

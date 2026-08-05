@@ -1,15 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { getServerEnv, normalizePrivateKey, resetServerEnvForTests } from './server-env.js'
+import { getServerEnv, resetServerEnvForTests } from './server-env.js'
 
 describe('server environment', () => {
   afterEach(() => {
     delete process.env.TELEGRAM_INIT_DATA_MAX_AGE_SECONDS
     resetServerEnvForTests()
-  })
-
-  it('normalizes escaped private-key newlines', () => {
-    expect(normalizePrivateKey('line1\\nline2')).toBe('line1\nline2')
   })
 
   it('parses numeric limits and safe defaults', () => {

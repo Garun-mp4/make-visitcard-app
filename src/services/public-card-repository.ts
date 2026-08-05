@@ -1,10 +1,8 @@
-import { doc, getDoc } from 'firebase/firestore'
-
 import { cardDraftSchema, publicCardSchema } from '@shared/schemas'
 import { demoCard } from '@shared/demo-data'
 import type { CardView } from '@shared/types'
 import { clientEnv } from '@/config/client-env'
-import { getFirebaseServices } from '@/services/firebase-client'
+import { ApiError, apiRequest } from '@/services/api-client'
 
 export async function loadPublicCard(slug: string): Promise<CardView | null> {
   if (clientEnv.demoMode) {
@@ -13,8 +11,12 @@ export async function loadPublicCard(slug: string): Promise<CardView | null> {
     const card = parsed?.success ? parsed.data : demoCard
     return card.publication.slug === slug && card.publication.published ? card : null
   }
-  const snapshot = await getDoc(doc(getFirebaseServices().db, 'publicCards', slug))
-  if (!snapshot.exists()) return null
-  const result = publicCardSchema.safeParse(snapshot.data())
-  return result.success ? result.data : null
+  try {
+    const response = await apiRequest<{ card: CardView }>(`/api/public/cards/${slug}`)
+    const result = publicCardSchema.safeParse(response.card)
+    return result.success ? result.data : null
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
+  }
 }

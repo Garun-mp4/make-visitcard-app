@@ -14,16 +14,10 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(
-  path: string,
-  init: RequestInit = {},
-  idToken?: string,
-): Promise<T> {
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   if (init.body) headers.set('Content-Type', 'application/json')
-  if (idToken) headers.set('Authorization', `Bearer ${idToken}`)
-
   const response = await fetch(path, { ...init, headers, credentials: 'same-origin' })
   const data: unknown = await response.json().catch(() => null)
   if (!response.ok) {
