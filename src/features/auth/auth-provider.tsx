@@ -10,7 +10,7 @@ import {
 import type { OwnerProfile } from '@shared/types'
 import { clientEnv } from '@/config/client-env'
 import { telegram } from '@/lib/telegram'
-import { apiRequest } from '@/services/api-client'
+import { apiRequest, setApiSessionToken } from '@/services/api-client'
 
 type AuthStatus = 'demo' | 'browser' | 'loading' | 'authenticated' | 'error'
 
@@ -39,11 +39,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setStatus('loading')
       setError(null)
       try {
-        const result = await apiRequest<{ user: OwnerProfile }>('/api/auth/telegram', {
-          method: 'POST',
-          body: JSON.stringify({ initData: telegram.initData }),
-        })
+        const result = await apiRequest<{ user: OwnerProfile; sessionToken: string }>(
+          '/api/auth/telegram',
+          {
+            method: 'POST',
+            body: JSON.stringify({ initData: telegram.initData }),
+          },
+        )
         if (active) {
+          setApiSessionToken(result.sessionToken)
           setUser(result.user)
           setStatus('authenticated')
         }

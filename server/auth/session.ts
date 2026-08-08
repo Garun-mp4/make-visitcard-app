@@ -57,8 +57,15 @@ function readCookie(req: Request): string | null {
   return null
 }
 
+function readBearerToken(req: Request): string | null {
+  const authorization = req.header('authorization') ?? ''
+  const [scheme, token, extra] = authorization.trim().split(/\s+/)
+  if (scheme?.toLowerCase() !== 'bearer' || !token || extra) return null
+  return token
+}
+
 export function requireSession(req: Request): SessionPayload {
-  const token = readCookie(req)
+  const token = readBearerToken(req) ?? readCookie(req)
   if (!token) throw new AppError(401, 'unauthorized', 'Требуется авторизация')
   return verifySessionToken(token)
 }

@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import type { Request } from 'express'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createSessionToken, sessionCookie, verifySessionToken } from './session.js'
+import { createSessionToken, requireSession, sessionCookie, verifySessionToken } from './session.js'
 import { resetServerEnvForTests } from '../config/server-env.js'
 
 describe('signed sessions', () => {
@@ -35,5 +36,18 @@ describe('signed sessions', () => {
 
     expect(cookie).toContain('SameSite=Lax')
     expect(cookie).not.toContain('Secure')
+  })
+
+  it('accepts a signed bearer session when third-party cookies are blocked', () => {
+    process.env.SESSION_SECRET = 'a-session-secret-with-at-least-32-characters'
+    resetServerEnvForTests()
+    const token = createSessionToken('telegram:42')
+    const request = {
+      header: vi.fn((name: string) =>
+        name.toLowerCase() === 'authorization' ? `Bearer ${token}` : undefined,
+      ),
+    } as unknown as Request
+
+    expect(requireSession(request)).toMatchObject({ uid: 'telegram:42' })
   })
 })

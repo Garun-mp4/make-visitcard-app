@@ -69,7 +69,7 @@ export function registerRoutes(router: Router) {
       const user = await upsertTelegramUser(result.user)
       const token = createSessionToken(user.uid)
       res.setHeader('Set-Cookie', sessionCookie(token, env.APP_ENV === 'production'))
-      res.json({ user })
+      res.json({ user, sessionToken: token })
     }),
   )
 
