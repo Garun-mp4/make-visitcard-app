@@ -7,7 +7,7 @@ import {
   useState,
 } from 'react'
 
-import type { OwnerProfile } from '@shared/types'
+import type { CardDraft, CardStats, LeadRecord, OwnerProfile } from '@shared/types'
 import { clientEnv } from '@/config/client-env'
 import { telegram } from '@/lib/telegram'
 import { apiRequest, setApiSessionToken } from '@/services/api-client'
@@ -18,6 +18,10 @@ interface AuthContextValue {
   status: AuthStatus
   user: OwnerProfile | null
   error: string | null
+  bootstrap: {
+    card: CardDraft
+    dashboard: { owner: OwnerProfile; stats: CardStats; leads: LeadRecord[] }
+  } | null
   retry(): void
 }
 
@@ -30,6 +34,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     clientEnv.demoMode ? 'demo' : telegram.available ? 'loading' : 'browser',
   )
   const [error, setError] = useState<string | null>(null)
+  const [bootstrap, setBootstrap] = useState<AuthContextValue['bootstrap']>(null)
 
   useEffect(() => {
     if (clientEnv.demoMode || !telegram.available) return
@@ -39,7 +44,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setStatus('loading')
       setError(null)
       try {
-        const result = await apiRequest<{ user: OwnerProfile; sessionToken: string }>(
+        const result = await apiRequest<{
+          user: OwnerProfile
+          sessionToken: string
+          card: CardDraft
+          dashboard: { owner: OwnerProfile; stats: CardStats; leads: LeadRecord[] }
+        }>(
           '/api/auth/telegram',
           {
             method: 'POST',
@@ -49,6 +59,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (active) {
           setApiSessionToken(result.sessionToken)
           setUser(result.user)
+          setBootstrap({ card: result.card, dashboard: result.dashboard })
           setStatus('authenticated')
         }
       } catch (reason) {
@@ -66,8 +77,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [attempt])
 
   const value = useMemo(
-    () => ({ status, user, error, retry: () => setAttempt((value) => value + 1) }),
-    [error, status, user],
+    () => ({ status, user, error, bootstrap, retry: () => setAttempt((value) => value + 1) }),
+    [bootstrap, error, status, user],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

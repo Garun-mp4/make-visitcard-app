@@ -70,8 +70,8 @@ export const primaryActionTypeSchema = z.enum([
 ])
 
 export const profileSchema = z.object({
-  displayName: z.string().trim().min(2).max(60),
-  profession: z.string().trim().min(2).max(80),
+  displayName: z.string().trim().max(60),
+  profession: z.string().trim().max(80),
   bio: z.string().trim().max(300),
   avatarUrl: z.union([z.literal(''), safeUrlSchema]),
   location: z.string().trim().max(80),
@@ -82,14 +82,14 @@ export const profileSchema = z.object({
 
 export const primaryActionSchema = z.object({
   type: primaryActionTypeSchema,
-  label: z.string().trim().min(2).max(40),
-  value: z.string().trim().min(2).max(2048),
+  label: z.string().trim().max(40),
+  value: z.string().trim().max(2048),
   enabled: z.boolean(),
 })
 
 export const skillSchema = z.object({
   id: z.string().min(1).max(80),
-  label: z.string().trim().min(1).max(30),
+  label: z.string().trim().max(30),
   position: z.number().int().nonnegative(),
 })
 
@@ -108,8 +108,8 @@ export const linkSchema = z.object({
     'phone',
     'custom',
   ]),
-  label: z.string().trim().min(1).max(60),
-  url: safeUrlSchema,
+  label: z.string().trim().max(60),
+  url: z.union([z.literal(''), safeUrlSchema]),
   enabled: z.boolean(),
   public: z.boolean(),
   position: z.number().int().nonnegative(),
@@ -117,7 +117,7 @@ export const linkSchema = z.object({
 
 export const serviceSchema = z.object({
   id: z.string().min(1).max(80),
-  title: z.string().trim().min(2).max(80),
+  title: z.string().trim().max(80),
   description: z.string().trim().max(240),
   priceType: z.enum(['fixed', 'from', 'negotiable', 'hidden']),
   price: z.number().nonnegative().nullable(),
@@ -129,7 +129,7 @@ export const serviceSchema = z.object({
 
 export const projectSchema = z.object({
   id: z.string().min(1).max(80),
-  title: z.string().trim().min(2).max(100),
+  title: z.string().trim().max(100),
   category: z.string().trim().max(60),
   description: z.string().trim().max(400),
   coverUrl: z.union([z.literal(''), safeUrlSchema]),
@@ -174,13 +174,66 @@ export const cardDraftSchema = z.object({
   lastPublishedAt: z.string().datetime().nullable(),
 })
 
+const publishableProfileSchema = profileSchema.extend({
+  displayName: z.string().trim().min(2).max(60),
+  profession: z.string().trim().min(2).max(80),
+})
+
+const publishablePrimaryActionSchema = primaryActionSchema.extend({
+  label: z.string().trim().min(2).max(40),
+  value: z.string().trim().min(2).max(2048),
+  enabled: z.literal(true),
+})
+
+const publishableSkillSchema = skillSchema.extend({
+  label: z.string().trim().min(1).max(30),
+})
+
+const publishableLinkSchema = linkSchema.extend({
+  label: z.string().trim().min(1).max(60),
+  url: safeUrlSchema,
+})
+
+const publishableServiceSchema = serviceSchema.extend({
+  title: z.string().trim().min(2).max(80),
+})
+
+const publishableProjectSchema = projectSchema.extend({
+  title: z.string().trim().min(2).max(100),
+})
+
+export const publishableCardSchema = cardDraftSchema.superRefine((card, context) => {
+  const checks: Array<[z.ZodType, unknown, (string | number)[]]> = [
+    [publishableProfileSchema, card.profile, ['profile']],
+    [publishablePrimaryActionSchema, card.primaryAction, ['primaryAction']],
+    [slugSchema, card.publication.slug, ['publication', 'slug']],
+  ]
+  card.skills.forEach((item, index) => checks.push([publishableSkillSchema, item, ['skills', index]]))
+  card.links.forEach((item, index) => {
+    if (item.enabled && item.public) checks.push([publishableLinkSchema, item, ['links', index]])
+  })
+  card.services.forEach((item, index) => {
+    if (item.enabled) checks.push([publishableServiceSchema, item, ['services', index]])
+  })
+  card.projects.forEach((item, index) => {
+    if (item.enabled) checks.push([publishableProjectSchema, item, ['projects', index]])
+  })
+  for (const [schema, value, prefix] of checks) {
+    const result = schema.safeParse(value)
+    if (!result.success) {
+      for (const issue of result.error.issues)
+        context.addIssue({ ...issue, path: [...prefix, ...issue.path] })
+    }
+  }
+})
+
 export const publicCardSchema = z.object({
-  profile: profileSchema,
-  primaryAction: primaryActionSchema,
-  skills: z.array(skillSchema).max(10),
-  links: z.array(linkSchema).max(10),
-  services: z.array(serviceSchema).max(6),
-  projects: z.array(projectSchema).max(6),
+  profile: publishableProfileSchema,
+  primaryAction: publishablePrimaryActionSchema,
+  skills: z.array(publishableSkillSchema).max(10),
+  links: z.array(publishableLinkSchema).max(10),
+  services: z.array(publishableServiceSchema).max(6),
+  projects: z.array(publishableProjectSchema).max(6),
   appearance: appearanceSchema,
   publication: publicationSchema,
   updatedAt: z.string().datetime(),

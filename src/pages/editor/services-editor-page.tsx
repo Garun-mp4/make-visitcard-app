@@ -4,9 +4,12 @@ import { useCardStore } from '@/app/card-store'
 import { Button } from '@/components/ui/button'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { moveItem } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
+import { useState } from 'react'
 
 export default function ServicesEditorPage() {
   const { card, updateCard } = useCardStore()
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const add = () => {
     if (card.services.length >= 6) return
     updateCard((current) => ({
@@ -15,8 +18,8 @@ export default function ServicesEditorPage() {
         ...current.services,
         {
           id: crypto.randomUUID(),
-          title: 'Новая услуга',
-          description: 'Коротко опишите результат для клиента',
+          title: '',
+          description: '',
           priceType: 'negotiable',
           price: null,
           currency: 'RUB',
@@ -46,6 +49,7 @@ export default function ServicesEditorPage() {
               aria-label="Название услуги"
               className="field-control min-h-11 flex-1 font-semibold"
               value={service.title}
+              placeholder="Название услуги"
               onChange={(event) =>
                 updateCard((current) => ({
                   ...current,
@@ -75,6 +79,7 @@ export default function ServicesEditorPage() {
             aria-label="Описание услуги"
             className="field-control"
             value={service.description}
+            placeholder="Коротко опишите результат для клиента"
             onChange={(event) =>
               updateCard((current) => ({
                 ...current,
@@ -114,19 +119,26 @@ export default function ServicesEditorPage() {
             <button
               aria-label="Удалить"
               className="grid size-10 place-items-center text-[var(--error)]"
-              onClick={() => {
-                if (window.confirm(`Удалить услугу «${service.title}»?`))
-                  updateCard((current) => ({
-                    ...current,
-                    services: current.services.filter((item) => item.id !== service.id),
-                  }))
-              }}
+              onClick={() => setPendingDelete(service.id)}
             >
               <Trash2 size={17} />
             </button>
           </div>
         </article>
       ))}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Удалить услугу?"
+        description="Услуга исчезнет из редактора и публичной визитки."
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          updateCard((current) => ({
+            ...current,
+            services: current.services.filter((item) => item.id !== pendingDelete),
+          }))
+          setPendingDelete(null)
+        }}
+      />
     </EditorShell>
   )
 }

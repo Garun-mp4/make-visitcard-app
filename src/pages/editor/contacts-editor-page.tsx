@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { moveItem } from '@/lib/utils'
+import { isSafeExternalUrl } from '@shared/schemas'
 
 export default function ContactsEditorPage() {
   const { card, updateCard } = useCardStore()
@@ -18,8 +19,8 @@ export default function ContactsEditorPage() {
         {
           id: crypto.randomUUID(),
           type: 'website',
-          label: 'Новая ссылка',
-          url: 'https://example.com',
+          label: '',
+          url: '',
           enabled: true,
           public: true,
           position: current.links.length,
@@ -70,6 +71,7 @@ export default function ContactsEditorPage() {
                 className="field-control min-h-11 flex-1"
                 aria-label="Название ссылки"
                 value={link.label}
+                placeholder="Например, Портфолио"
                 onChange={(event) =>
                   updateCard((current) => ({
                     ...current,
@@ -98,6 +100,7 @@ export default function ContactsEditorPage() {
               className="field-control min-h-11"
               aria-label="URL ссылки"
               value={link.url}
+              placeholder="https://example.com"
               onChange={(event) =>
                 updateCard((current) => ({
                   ...current,
@@ -107,6 +110,9 @@ export default function ContactsEditorPage() {
                 }))
               }
             />
+            {link.url && !isSafeExternalUrl(link.url, import.meta.env.DEV) ? (
+              <p className="error-text m-0">Введите безопасную ссылку HTTPS, email или телефон</p>
+            ) : null}
             <div className="flex justify-end gap-1">
               <button
                 aria-label="Переместить выше"

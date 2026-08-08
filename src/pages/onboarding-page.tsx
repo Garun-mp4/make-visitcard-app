@@ -7,6 +7,9 @@ import { useCardStore } from '@/app/card-store'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Field, TextareaField } from '@/components/ui/field'
+import { apiRequest } from '@/services/api-client'
+import { clientEnv } from '@/config/client-env'
+import { slugSchema } from '@shared/schemas'
 
 const totalSteps = 6
 
@@ -16,19 +19,40 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(() =>
     Number(sessionStorage.getItem('cardly-onboarding-step') ?? 0),
   )
+  const [slugState, setSlugState] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle')
   useEffect(() => sessionStorage.setItem('cardly-onboarding-step', String(step)), [step])
   const next = () => setStep((current) => Math.min(totalSteps - 1, current + 1))
   const back = () => setStep((current) => Math.max(0, current - 1))
+  useEffect(() => {
+    if (step !== 5 || !slugSchema.safeParse(card.publication.slug).success) {
+      setSlugState('idle')
+      return
+    }
+    let active = true
+    const timer = window.setTimeout(() => {
+      setSlugState('checking')
+      if (clientEnv.demoMode) setSlugState('available')
+      else
+        void apiRequest<{ available: boolean }>('/api/slugs/check', {
+          method: 'POST',
+          body: JSON.stringify({ slug: card.publication.slug }),
+        })
+          .then((result) => {
+            if (active) setSlugState(result.available ? 'available' : 'unavailable')
+          })
+          .catch(() => {
+            if (active) setSlugState('unavailable')
+          })
+    }, 450)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [card.publication.slug, step])
   const finish = () => {
     updateCard((current) => ({
       ...current,
       onboardingCompleted: true,
-      publication: {
-        ...current.publication,
-        published: true,
-        publishedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
     }))
     sessionStorage.removeItem('cardly-onboarding-step')
     void navigate('/app/card')
@@ -39,7 +63,7 @@ export default function OnboardingPage() {
       : step === 2
         ? card.primaryAction.label.trim().length >= 2 && card.primaryAction.value.trim().length >= 2
         : step === 5
-          ? card.publication.slug.length >= 3
+          ? slugState === 'available'
           : true
   return (
     <main className="app-shell mx-auto flex min-h-[100dvh] w-full max-w-[430px] flex-col px-5 pb-[max(20px,var(--tg-safe-bottom))]">
@@ -252,7 +276,15 @@ export default function OnboardingPage() {
                   }
                 />
               </div>
-              <span className="helper-text !text-[var(--success)]">Адрес свободен</span>
+              <span className={`helper-text ${slugState === 'available' ? '!text-[var(--success)]' : slugState === 'unavailable' ? '!text-[var(--error)]' : ''}`}>
+                {slugState === 'checking'
+                  ? 'Проверяем адрес…'
+                  : slugState === 'available'
+                    ? 'Адрес свободен'
+                    : slugState === 'unavailable'
+                      ? 'Адрес уже занят'
+                      : 'Введите 3–30 латинских символов'}
+              </span>
             </label>
             <div className="surface flex items-center gap-3 rounded-2xl p-4">
               <Avatar name={card.profile.displayName} />
@@ -265,7 +297,7 @@ export default function OnboardingPage() {
         ) : null}
       </section>
       <Button fullWidth disabled={!canContinue} onClick={step === totalSteps - 1 ? finish : next}>
-        {step === totalSteps - 1 ? 'Опубликовать визитку' : step === 0 ? 'Начать' : 'Продолжить'}
+        {step === totalSteps - 1 ? 'Создать черновик' : step === 0 ? 'Начать' : 'Продолжить'}
         <ArrowRight size={17} />
       </Button>
     </main>

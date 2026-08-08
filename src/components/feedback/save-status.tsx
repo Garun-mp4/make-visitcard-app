@@ -1,8 +1,8 @@
 import { AlertCircle, Check, LoaderCircle } from 'lucide-react'
 
-import type { SaveStatus as SaveStatusValue } from '@/app/card-store'
+import type { SaveError, SaveStatus as SaveStatusValue } from '@/app/card-store'
 
-export function SaveStatus({ status, onRetry }: { status: SaveStatusValue; onRetry?: () => void }) {
+export function SaveStatus({ status, error, onRetry }: { status: SaveStatusValue; error?: SaveError | null; onRetry?: () => void }) {
   const config = {
     idle: { label: 'Черновик', icon: null },
     dirty: { label: 'Есть изменения', icon: null },
@@ -21,6 +21,9 @@ export function SaveStatus({ status, onRetry }: { status: SaveStatusValue; onRet
     >
       {config.icon}
       {config.label}
+      {status === 'error' && error ? (
+        <span className="sr-only">{error.message}{error.requestId ? `, request ID ${error.requestId}` : ''}</span>
+      ) : null}
       {status === 'error' && onRetry ? (
         <button className="font-semibold text-[var(--error)] underline" onClick={onRetry}>
           Повторить

@@ -13,10 +13,12 @@ import { demoCard, demoLeads, demoOwner, demoStats } from '@shared/demo-data'
 import type { CardDraft, CardStats, LeadRecord, OwnerProfile } from '@shared/types'
 import { clientEnv } from '@/config/client-env'
 import { cardRepository } from '@/services/card-repository'
+import { ApiError } from '@/services/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
-import { loadOwnerDashboard, saveLeadStatus } from '@/services/owner-dashboard-service'
+import { saveLeadStatus } from '@/services/owner-dashboard-service'
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
+export interface SaveError { message: string; requestId?: string }
 
 interface CardStoreValue {
   card: CardDraft
@@ -24,6 +26,7 @@ interface CardStoreValue {
   stats: CardStats
   leads: LeadRecord[]
   saveStatus: SaveStatus
+  saveError: SaveError | null
   online: boolean
   updateCard(updater: (card: CardDraft) => CardDraft): void
   saveNow(): Promise<void>
@@ -35,36 +38,41 @@ const CardStoreContext = createContext<CardStoreValue | null>(null)
 
 export function CardStoreProvider({ children }: PropsWithChildren) {
   const auth = useAuth()
-  const [card, setCard] = useState<CardDraft>(demoCard)
-  const [owner, setOwner] = useState<OwnerProfile>(demoOwner)
-  const [stats, setStats] = useState<CardStats>(demoStats)
+  const [card, setCard] = useState<CardDraft | null>(clientEnv.demoMode ? demoCard : null)
+  const [owner, setOwner] = useState<OwnerProfile | null>(clientEnv.demoMode ? demoOwner : null)
+  const [stats, setStats] = useState<CardStats | null>(clientEnv.demoMode ? demoStats : null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
-  const [leads, setLeads] = useState(demoLeads)
+  const [saveError, setSaveError] = useState<SaveError | null>(null)
+  const [leads, setLeads] = useState<LeadRecord[]>(clientEnv.demoMode ? demoLeads : [])
   const [online, setOnline] = useState(navigator.onLine)
   const saveTimer = useRef<number | null>(null)
-  const cardRef = useRef(card)
+  const revision = useRef(0)
+  const pendingSave = useRef(false)
+  const savingPromise = useRef<Promise<void> | null>(null)
+  const cardRef = useRef<CardDraft | null>(card)
   cardRef.current = card
 
   useEffect(() => {
     if (auth.status !== 'demo' && auth.status !== 'authenticated') return
     let active = true
-    const ownerUid = auth.user?.uid ?? demoOwner.uid
-    void Promise.all([
-      cardRepository.load(ownerUid),
-      auth.status === 'authenticated' ? loadOwnerDashboard() : Promise.resolve(null),
-    ]).then(([saved, dashboard]) => {
-      if (!active) return
-      setCard(saved ?? { ...demoCard, ownerUid })
-      if (dashboard) {
-        setOwner(dashboard.owner)
-        setStats(dashboard.stats)
-        setLeads(dashboard.leads)
-      }
-    })
+    if (auth.status === 'demo') {
+      void cardRepository.load(demoOwner.uid).then((saved) => {
+        if (!active) return
+        setCard(saved ?? demoCard)
+        setOwner(demoOwner)
+        setStats(demoStats)
+        setLeads(demoLeads)
+      })
+    } else if (auth.bootstrap) {
+      setCard(auth.bootstrap.card)
+      setOwner(auth.bootstrap.dashboard.owner)
+      setStats(auth.bootstrap.dashboard.stats)
+      setLeads(auth.bootstrap.dashboard.leads)
+    }
     return () => {
       active = false
     }
-  }, [auth.status, auth.user?.uid])
+  }, [auth.bootstrap, auth.status])
 
   useEffect(() => {
     const handleOnline = () => setOnline(true)
@@ -83,21 +91,51 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
       return
     }
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
-    setSaveStatus('saving')
-    try {
-      const ownerUid = auth.user?.uid ?? cardRef.current.ownerUid
-      const saved = await cardRepository.save({ ...cardRef.current, ownerUid })
-      setCard((current) => (current.updatedAt > saved.updatedAt ? current : saved))
-      setSaveStatus('saved')
-    } catch {
-      setSaveStatus('error')
+    pendingSave.current = true
+    if (savingPromise.current) return savingPromise.current
+    const run = async () => {
+      while (pendingSave.current) {
+        pendingSave.current = false
+        const snapshot = cardRef.current
+        if (!snapshot) return
+        const capturedRevision = revision.current
+        setSaveStatus('saving')
+        setSaveError(null)
+        try {
+          const ownerUid = auth.user?.uid ?? snapshot.ownerUid
+          const saved = await cardRepository.save({ ...snapshot, ownerUid })
+          if (revision.current === capturedRevision) {
+            cardRef.current = saved
+            setCard(saved)
+            setSaveStatus('saved')
+          } else {
+            pendingSave.current = true
+            setSaveStatus('dirty')
+          }
+        } catch (error) {
+          setSaveStatus('error')
+          setSaveError(
+            error instanceof ApiError
+              ? { message: error.message, requestId: error.payload.requestId }
+              : { message: 'Не удалось сохранить изменения' },
+          )
+          break
+        }
+      }
     }
+    savingPromise.current = run().finally(() => {
+      savingPromise.current = null
+    })
+    return savingPromise.current
   }, [auth.user?.uid])
 
   const updateCard = useCallback(
     (updater: (value: CardDraft) => CardDraft) => {
       setCard((current) => {
+        if (!current) return current
         const next = updater(current)
+        revision.current += 1
+        pendingSave.current = true
         cardRef.current = next
         return next
       })
@@ -123,13 +161,15 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
     [],
   )
 
-  const value = useMemo<CardStoreValue>(
+  const ready = Boolean(card && owner && stats)
+  const value = useMemo<CardStoreValue | null>(
     () => ({
-      card,
-      owner,
-      stats,
+      card: card!,
+      owner: owner!,
+      stats: stats!,
       leads,
       saveStatus,
+      saveError,
       online,
       updateCard,
       saveNow,
@@ -140,15 +180,18 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
         setStats(demoStats)
         setLeads(demoLeads)
         setSaveStatus('idle')
+        setSaveError(null)
       },
       setLeadStatus: (id, status) => {
         setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status } : lead)))
         if (!clientEnv.demoMode) void saveLeadStatus(id, status)
       },
     }),
-    [card, leads, online, owner, saveNow, saveStatus, stats, updateCard],
+    [card, leads, online, owner, saveError, saveNow, saveStatus, stats, updateCard],
   )
 
+  if (auth.status === 'authenticated' && !ready)
+    return <div className="app-shell grid min-h-[100dvh] place-items-center">Загружаем Cardly…</div>
   return <CardStoreContext.Provider value={value}>{children}</CardStoreContext.Provider>
 }
 

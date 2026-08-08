@@ -17,6 +17,7 @@ import { requireServerEnv } from '../config/server-env.js'
 import {
   createLead,
   getCard,
+  getOrCreateCard,
   getOwnerDashboard,
   getPublicCard,
   isSlugAvailable,
@@ -67,9 +68,11 @@ export function registerRoutes(router: Router) {
         env.TELEGRAM_INIT_DATA_MAX_AGE_SECONDS,
       )
       const user = await upsertTelegramUser(result.user)
+      const card = await getOrCreateCard(user)
+      const dashboard = await getOwnerDashboard(user.uid)
       const token = createSessionToken(user.uid)
       res.setHeader('Set-Cookie', sessionCookie(token, env.APP_ENV === 'production'))
-      res.json({ user, sessionToken: token })
+      res.json({ user, sessionToken: token, card, dashboard })
     }),
   )
 

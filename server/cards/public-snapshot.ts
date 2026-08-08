@@ -1,7 +1,7 @@
-import { cardDraftSchema } from '../../shared/schemas.js'
+import { publishableCardSchema } from '../../shared/schemas.js'
 
 export function sanitizePublicSnapshot(input: unknown) {
-  const card = cardDraftSchema.parse(input)
+  const card = publishableCardSchema.parse(input)
   return {
     profile: { ...card.profile },
     primaryAction: card.primaryAction.enabled

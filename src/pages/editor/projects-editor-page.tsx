@@ -4,9 +4,12 @@ import { useCardStore } from '@/app/card-store'
 import { Button } from '@/components/ui/button'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { moveItem } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
+import { useState } from 'react'
 
 export default function ProjectsEditorPage() {
   const { card, updateCard } = useCardStore()
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const add = () => {
     if (card.projects.length >= 6) return
     updateCard((current) => ({
@@ -15,9 +18,9 @@ export default function ProjectsEditorPage() {
         ...current.projects,
         {
           id: crypto.randomUUID(),
-          title: 'Новый проект',
-          category: 'Проект',
-          description: 'Расскажите о задаче и результате',
+          title: '',
+          category: '',
+          description: '',
           coverUrl: '',
           projectUrl: '',
           enabled: true,
@@ -45,6 +48,7 @@ export default function ProjectsEditorPage() {
             aria-label="Название проекта"
             className="field-control min-h-11 font-semibold"
             value={project.title}
+            placeholder="Название проекта"
             onChange={(event) =>
               updateCard((current) => ({
                 ...current,
@@ -58,6 +62,7 @@ export default function ProjectsEditorPage() {
             aria-label="Описание проекта"
             className="field-control"
             value={project.description}
+            placeholder="Расскажите о задаче и результате"
             onChange={(event) =>
               updateCard((current) => ({
                 ...current,
@@ -112,19 +117,26 @@ export default function ProjectsEditorPage() {
             <button
               aria-label="Удалить"
               className="grid size-10 place-items-center text-[var(--error)]"
-              onClick={() => {
-                if (window.confirm(`Удалить проект «${project.title}»?`))
-                  updateCard((current) => ({
-                    ...current,
-                    projects: current.projects.filter((item) => item.id !== project.id),
-                  }))
-              }}
+              onClick={() => setPendingDelete(project.id)}
             >
               <Trash2 size={17} />
             </button>
           </div>
         </article>
       ))}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Удалить проект?"
+        description="Проект исчезнет из редактора и публичной визитки."
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          updateCard((current) => ({
+            ...current,
+            projects: current.projects.filter((item) => item.id !== pendingDelete),
+          }))
+          setPendingDelete(null)
+        }}
+      />
     </EditorShell>
   )
 }

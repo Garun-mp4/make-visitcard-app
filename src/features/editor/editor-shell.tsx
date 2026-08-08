@@ -20,7 +20,7 @@ const sections = [
 
 export function EditorShell({ title, children }: PropsWithChildren<{ title: string }>) {
   const navigate = useNavigate()
-  const { card, saveNow, saveStatus } = useCardStore()
+  const { card, saveError, saveNow, saveStatus } = useCardStore()
   useTelegramBack(() => void navigate('/app/editor'))
   return (
     <main className="min-h-[100dvh] lg:p-8">
@@ -34,7 +34,7 @@ export function EditorShell({ title, children }: PropsWithChildren<{ title: stri
             <ArrowLeft size={20} />
           </button>
           <h1 className="page-title">{title}</h1>
-          <SaveStatus status={saveStatus} onRetry={() => void saveNow()} />
+          <SaveStatus status={saveStatus} error={saveError} onRetry={() => void saveNow()} />
         </header>
         <div className="lg:grid lg:grid-cols-[220px_minmax(360px,1fr)_410px] lg:gap-6">
           <nav

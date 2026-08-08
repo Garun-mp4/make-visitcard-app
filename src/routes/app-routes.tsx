@@ -6,6 +6,7 @@ import { PageSkeleton } from '@/components/feedback/page-skeleton'
 import { BrowserOwnerBlockPage } from '@/pages/browser-owner-block-page'
 import { useAuth } from '@/features/auth/auth-provider'
 import { SystemState } from '@/components/feedback/system-state'
+import { useCardStore } from '@/app/card-store'
 
 const LaunchPage = lazy(() => import('@/pages/launch-page'))
 const OnboardingPage = lazy(() => import('@/pages/onboarding-page'))
@@ -25,6 +26,7 @@ const NotFoundPage = lazy(() => import('@/pages/not-found-page'))
 
 function OwnerGuard() {
   const auth = useAuth()
+  const { card } = useCardStore()
   if (auth.status === 'browser') return <BrowserOwnerBlockPage />
   if (auth.status === 'loading') return <PageSkeleton />
   if (auth.status === 'error')
@@ -36,11 +38,13 @@ function OwnerGuard() {
         onAction={auth.retry}
       />
     )
+  if (!card.onboardingCompleted) return <Navigate to="/app/onboarding" replace />
   return <OwnerLayout />
 }
 
 function OnboardingGuard() {
   const auth = useAuth()
+  const { card } = useCardStore()
   if (auth.status === 'browser') return <BrowserOwnerBlockPage />
   if (auth.status === 'loading') return <PageSkeleton />
   if (auth.status === 'error')
@@ -52,6 +56,7 @@ function OnboardingGuard() {
         onAction={auth.retry}
       />
     )
+  if (card.onboardingCompleted) return <Navigate to="/app/card" replace />
   return <OnboardingPage />
 }
 

@@ -15,6 +15,16 @@ vi.mock('@/services/card-repository', () => ({
   },
 }))
 
+vi.mock('@/config/client-env', () => ({
+  clientEnv: {
+    appBaseUrl: '',
+    telegramBotUsername: '',
+    telegramAppShortName: '',
+    demoMode: true,
+    defaultLocale: 'ru',
+  },
+}))
+
 describe('OnboardingPage', () => {
   it('moves through the first step and exposes accessible progress', async () => {
     sessionStorage.clear()

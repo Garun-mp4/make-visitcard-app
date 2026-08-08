@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
-import { cardDraftSchema, publicCardSchema } from '../../shared/schemas.js'
+import { cardDraftSchema, publicCardSchema, publishableCardSchema } from '../../shared/schemas.js'
+import { createInitialCard } from '../../shared/initial-card.js'
 import type {
   AnalyticsEvent,
   CardDraft,
@@ -98,25 +99,44 @@ export async function getCard(uid: string): Promise<CardDraft | null> {
   return cardDraftSchema.parse(rows[0].data)
 }
 
+export async function getOrCreateCard(owner: OwnerProfile): Promise<CardDraft> {
+  const current = await getCard(owner.uid)
+  if (current) return current
+  const sql = await database()
+  const card = createInitialCard(owner)
+  await sql`
+    INSERT INTO cardly_cards (owner_uid, data, slug, published, public_data, updated_at)
+    VALUES (${owner.uid}, ${JSON.stringify(card)}::jsonb, NULL, FALSE, NULL, NOW())
+    ON CONFLICT (owner_uid) DO NOTHING
+  `
+  return (await getCard(owner.uid)) ?? card
+}
+
 export async function saveCard(uid: string, input: CardDraft): Promise<CardDraft> {
   const sql = await database()
   const now = new Date().toISOString()
   const card = cardDraftSchema.parse({ ...input, ownerUid: uid, updatedAt: now })
-  await sql`
-    INSERT INTO cardly_cards (owner_uid, data, slug, published, public_data, updated_at)
-    VALUES (
-      ${uid}, ${JSON.stringify(card)}::jsonb,
-      ${card.publication.slug || null}, ${card.publication.published},
-      ${card.publication.published ? JSON.stringify(sanitizePublicSnapshot(card)) : null}::jsonb,
-      NOW()
-    )
-    ON CONFLICT (owner_uid) DO UPDATE SET
-      data = EXCLUDED.data,
-      slug = EXCLUDED.slug,
-      published = EXCLUDED.published,
-      public_data = EXCLUDED.public_data,
-      updated_at = NOW()
-  `
+  try {
+    await sql`
+      INSERT INTO cardly_cards (owner_uid, data, slug, published, public_data, updated_at)
+      VALUES (
+        ${uid}, ${JSON.stringify(card)}::jsonb,
+        ${card.publication.slug || null}, ${card.publication.published},
+        ${card.publication.published ? JSON.stringify(sanitizePublicSnapshot(card)) : null}::jsonb,
+        NOW()
+      )
+      ON CONFLICT (owner_uid) DO UPDATE SET
+        data = EXCLUDED.data,
+        slug = EXCLUDED.slug,
+        published = EXCLUDED.published,
+        public_data = EXCLUDED.public_data,
+        updated_at = NOW()
+    `
+  } catch (error) {
+    if ((error as { code?: string }).code === '23505')
+      throw new AppError(409, 'slug_unavailable', 'Этот адрес уже занят')
+    throw error
+  }
   return card
 }
 
@@ -132,7 +152,7 @@ export async function publishCard(uid: string, slug: string): Promise<CardDraft>
   const current = await getCard(uid)
   if (!current) throw new AppError(404, 'draft_not_found', 'Черновик визитки не найден')
   const now = new Date().toISOString()
-  const card = cardDraftSchema.parse({
+  const card = publishableCardSchema.parse({
     ...current,
     publication: {
       ...current.publication,
