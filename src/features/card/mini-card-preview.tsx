@@ -4,11 +4,42 @@ import { accentStyle } from '@/lib/accent-preset'
 import { formatPrice } from '@/lib/utils'
 import { useLocaleText } from '@/i18n/use-locale-text'
 
-export function MiniCardPreview({ card }: { card: CardDraft }) {
+export function MiniCardPreview({ card, compact = false }: { card: CardDraft; compact?: boolean }) {
   const l = useLocaleText()
   const service = card.services.find((item) => item.enabled)
   const dark = card.appearance.themeId === 'dark'
   const editorial = card.appearance.themeId === 'editorial'
+  if (compact)
+    return (
+      <article
+        style={accentStyle(card.appearance.accentPreset, dark)}
+        className={`${dark ? 'bg-[#111612] text-[#f1f4f0] [--mini-muted:#aab4ac]' : editorial ? 'bg-[#f4ecdc] text-[#34281f] [--mini-muted:#715f50]' : 'bg-[#fbfcf9] text-[#171916] [--mini-muted:#60675e]'} rounded-2xl border border-[var(--border)] p-4`}
+      >
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--border)] p-3">
+          <Avatar
+            name={card.profile.displayName}
+            src={card.profile.avatarUrl}
+            shape={card.appearance.avatarShape}
+          />
+          <div className="min-w-0">
+            <h2 className="heading-font m-0 truncate text-base font-semibold">
+              {card.profile.displayName}
+            </h2>
+            <p className="m-0 truncate text-xs text-[var(--mini-muted)]">
+              {card.profile.profession}
+            </p>
+          </div>
+        </div>
+        {card.profile.bio ? (
+          <p className="mb-3 mt-3 line-clamp-2 text-sm leading-relaxed text-[var(--mini-muted)]">
+            {card.profile.bio}
+          </p>
+        ) : null}
+        <div className="rounded-xl bg-[var(--mini-accent)] px-4 py-3 text-center text-sm font-semibold text-white">
+          {card.primaryAction.label}
+        </div>
+      </article>
+    )
   return (
     <article
       style={accentStyle(card.appearance.accentPreset, dark)}

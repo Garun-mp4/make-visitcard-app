@@ -1,17 +1,17 @@
-import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { useCardStore } from '@/app/card-store'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { EditorShell } from '@/features/editor/editor-shell'
-import { moveItem } from '@/lib/utils'
 import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function SkillsEditorPage() {
   const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const [skill, setSkill] = useState('')
+  const [adding, setAdding] = useState(false)
   const add = () => {
     const label = skill.trim().replace(/\s+/g, ' ')
     if (
@@ -29,26 +29,10 @@ export default function SkillsEditorPage() {
       ],
     }))
     setSkill('')
+    setAdding(false)
   }
   return (
     <EditorShell title={l('Навыки', 'Skills')}>
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <Field
-            label={l('Новый навык', 'New skill')}
-            value={skill}
-            maxLength={30}
-            onChange={(event) => setSkill(event.target.value)}
-          />
-        </div>
-        <Button
-          aria-label={l('Добавить навык', 'Add skill')}
-          onClick={add}
-          disabled={!skill.trim() || card.skills.length >= 10}
-        >
-          <Plus size={17} />
-        </Button>
-      </div>
       <p className="helper-text">
         {l(
           `До 10 навыков · ${card.skills.length} добавлено`,
@@ -56,37 +40,11 @@ export default function SkillsEditorPage() {
         )}
       </p>
       <div className="stack-12">
-        {card.skills.map((item, index) => (
+        {card.skills.map((item) => (
           <div key={item.id} className="surface flex min-h-14 items-center gap-2 rounded-xl px-3">
             <span className="flex-1 text-sm font-medium">{item.label}</span>
             <button
-              aria-label="Выше"
-              className="grid size-10 place-items-center"
-              disabled={index === 0}
-              onClick={() =>
-                updateCard((current) => ({
-                  ...current,
-                  skills: moveItem(current.skills, index, -1),
-                }))
-              }
-            >
-              <ChevronUp size={17} />
-            </button>
-            <button
-              aria-label="Ниже"
-              className="grid size-10 place-items-center"
-              disabled={index === card.skills.length - 1}
-              onClick={() =>
-                updateCard((current) => ({
-                  ...current,
-                  skills: moveItem(current.skills, index, 1),
-                }))
-              }
-            >
-              <ChevronDown size={17} />
-            </button>
-            <button
-              aria-label="Удалить"
+              aria-label={l(`Удалить ${item.label}`, `Remove ${item.label}`)}
               className="grid size-10 place-items-center text-[var(--error)]"
               onClick={() =>
                 updateCard((current) => ({
@@ -100,6 +58,41 @@ export default function SkillsEditorPage() {
           </div>
         ))}
       </div>
+      {adding ? (
+        <div className="surface grid gap-3 rounded-xl p-4">
+          <Field
+            label={l('Новый навык', 'New skill')}
+            value={skill}
+            autoFocus
+            maxLength={30}
+            onChange={(event) => setSkill(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                add()
+              }
+            }}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" onClick={() => setAdding(false)}>
+              {l('Отмена', 'Cancel')}
+            </Button>
+            <Button onClick={add} disabled={!skill.trim() || card.skills.length >= 10}>
+              {l('Добавить', 'Add')}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          fullWidth
+          variant="secondary"
+          onClick={() => setAdding(true)}
+          disabled={card.skills.length >= 10}
+        >
+          <Plus size={17} />
+          {l('Добавить навык', 'Add skill')}
+        </Button>
+      )}
     </EditorShell>
   )
 }

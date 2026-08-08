@@ -6,6 +6,7 @@ import { EditorShell } from '@/features/editor/editor-shell'
 import { cn } from '@/lib/utils'
 import { accentOptions } from '@/lib/accent-preset'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { Switch } from '@/components/ui/switch'
 
 const themes: Array<{
   id: Appearance['themeId']
@@ -135,17 +136,17 @@ export default function AppearanceEditorPage() {
           ['showProjects', l('Проекты', 'Projects')],
           ['showContactForm', l('Форма заявки', 'Lead form')],
         ].map(([field, label]) => (
-          <label
+          <div
             key={field}
             className="surface flex min-h-12 items-center justify-between rounded-xl px-3 text-sm"
           >
             <span>{label}</span>
-            <input
-              type="checkbox"
+            <Switch
+              aria-label={String(label)}
               checked={appearance[field as keyof Appearance] as boolean}
-              onChange={() => toggle(field as Parameters<typeof toggle>[0])}
+              onClick={() => toggle(field as Parameters<typeof toggle>[0])}
             />
-          </label>
+          </div>
         ))}
       </section>
     </EditorShell>

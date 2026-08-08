@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, MoreVertical, Plus, Trash2 } from 'lucide-react'
 
 import { useCardStore } from '@/app/card-store'
 import { Button } from '@/components/ui/button'
@@ -7,19 +7,22 @@ import { moveItem } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
 import { useState } from 'react'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { Switch } from '@/components/ui/switch'
 
 export default function ProjectsEditorPage() {
   const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const add = () => {
     if (card.projects.length >= 6) return
+    const id = crypto.randomUUID()
     updateCard((current) => ({
       ...current,
       projects: [
         ...current.projects,
         {
-          id: crypto.randomUUID(),
+          id,
           title: '',
           category: '',
           description: '',
@@ -30,6 +33,7 @@ export default function ProjectsEditorPage() {
         },
       ],
     }))
+    setEditingId(id)
   }
   return (
     <EditorShell title={l('Проекты', 'Projects')}>
@@ -47,48 +51,26 @@ export default function ProjectsEditorPage() {
       </div>
       {card.projects.map((project, index) => (
         <article key={project.id} className="surface grid gap-3 rounded-xl p-4">
-          <div className="aspect-[16/10] rounded-xl bg-[var(--accent-soft)]" />
-          <input
-            aria-label="Название проекта"
-            className="field-control min-h-11 font-semibold"
-            value={project.title}
-            placeholder={l('Название проекта', 'Project name')}
-            onChange={(event) =>
-              updateCard((current) => ({
-                ...current,
-                projects: current.projects.map((item) =>
-                  item.id === project.id ? { ...item, title: event.target.value } : item,
-                ),
-              }))
-            }
-          />
-          <textarea
-            aria-label="Описание проекта"
-            className="field-control"
-            value={project.description}
-            placeholder={l(
-              'Расскажите о задаче и результате',
-              'Describe the challenge and outcome',
-            )}
-            onChange={(event) =>
-              updateCard((current) => ({
-                ...current,
-                projects: current.projects.map((item) =>
-                  item.id === project.id ? { ...item, description: event.target.value } : item,
-                ),
-              }))
-            }
-          />
-          {!project.title.trim() ? (
-            <p className="error-text m-0">
-              {l('Укажите название проекта', 'Enter a project name')}
-            </p>
-          ) : null}
-          <label className="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-3">
+            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent)]">
+              {(project.title || l('П', 'P')).slice(0, 1).toUpperCase()}
+            </div>
+            <button
+              className="min-w-0 flex-1 text-left"
+              aria-expanded={editingId === project.id}
+              onClick={() => setEditingId(editingId === project.id ? null : project.id)}
+            >
+              <strong className="block truncate text-sm">
+                {project.title || l('Новый проект', 'New project')}
+              </strong>
+              <span className="block truncate text-[11px] text-[var(--text-muted)]">
+                {project.category || l('Категория не указана', 'No category')}
+              </span>
+            </button>
+            <Switch
+              aria-label={l('Показывать проект', 'Show project')}
               checked={project.enabled}
-              onChange={() =>
+              onClick={() =>
                 updateCard((current) => ({
                   ...current,
                   projects: current.projects.map((item) =>
@@ -97,9 +79,63 @@ export default function ProjectsEditorPage() {
                 }))
               }
             />
-            {l('Показывать в визитке', 'Show on card')}
-          </label>
-          <div className="flex justify-end gap-1">
+            <MoreVertical size={18} className="text-[var(--text-muted)]" aria-hidden="true" />
+          </div>
+          {editingId === project.id ? (
+            <div className="grid gap-3 border-t border-[var(--border)] pt-3">
+              <input
+                aria-label={l('Название проекта', 'Project name')}
+                className="field-control min-h-11 font-semibold"
+                value={project.title}
+                placeholder={l('Название проекта', 'Project name')}
+                onChange={(event) =>
+                  updateCard((current) => ({
+                    ...current,
+                    projects: current.projects.map((item) =>
+                      item.id === project.id ? { ...item, title: event.target.value } : item,
+                    ),
+                  }))
+                }
+              />
+              <input
+                aria-label={l('Категория проекта', 'Project category')}
+                className="field-control min-h-11"
+                value={project.category}
+                placeholder={l('Например, Fintech', 'For example, Fintech')}
+                onChange={(event) =>
+                  updateCard((current) => ({
+                    ...current,
+                    projects: current.projects.map((item) =>
+                      item.id === project.id ? { ...item, category: event.target.value } : item,
+                    ),
+                  }))
+                }
+              />
+              <textarea
+                aria-label={l('Описание проекта', 'Project description')}
+                className="field-control"
+                value={project.description}
+                placeholder={l(
+                  'Расскажите о задаче и результате',
+                  'Describe the challenge and outcome',
+                )}
+                onChange={(event) =>
+                  updateCard((current) => ({
+                    ...current,
+                    projects: current.projects.map((item) =>
+                      item.id === project.id ? { ...item, description: event.target.value } : item,
+                    ),
+                  }))
+                }
+              />
+              {!project.title.trim() ? (
+                <p className="error-text m-0">
+                  {l('Укажите название проекта', 'Enter a project name')}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          <div className={`justify-end gap-1 ${editingId === project.id ? 'flex' : 'hidden'}`}>
             <button
               aria-label="Выше"
               className="grid size-10 place-items-center"

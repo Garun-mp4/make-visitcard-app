@@ -1,25 +1,28 @@
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, MoreVertical, Plus, Trash2 } from 'lucide-react'
 
 import { useCardStore } from '@/app/card-store'
 import { Button } from '@/components/ui/button'
 import { EditorShell } from '@/features/editor/editor-shell'
-import { moveItem } from '@/lib/utils'
+import { formatPrice, moveItem } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
 import { useState } from 'react'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { Switch } from '@/components/ui/switch'
 
 export default function ServicesEditorPage() {
   const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const add = () => {
     if (card.services.length >= 6) return
+    const id = crypto.randomUUID()
     updateCard((current) => ({
       ...current,
       services: [
         ...current.services,
         {
-          id: crypto.randomUUID(),
+          id,
           title: '',
           description: '',
           priceType: 'negotiable',
@@ -31,6 +34,7 @@ export default function ServicesEditorPage() {
         },
       ],
     }))
+    setEditingId(id)
   }
   return (
     <EditorShell title={l('Услуги', 'Services')}>
@@ -46,58 +50,76 @@ export default function ServicesEditorPage() {
       </div>
       {card.services.map((service, index) => (
         <article key={service.id} className="surface grid gap-3 rounded-xl p-4">
-          <div className="flex items-center gap-2">
-            <input
-              aria-label="Название услуги"
-              className="field-control min-h-11 flex-1 font-semibold"
-              value={service.title}
-              placeholder={l('Название услуги', 'Service name')}
-              onChange={(event) =>
+          <div className="flex items-start gap-3">
+            <button
+              className="min-w-0 flex-1 text-left"
+              aria-expanded={editingId === service.id}
+              onClick={() => setEditingId(editingId === service.id ? null : service.id)}
+            >
+              <strong className="block truncate text-sm">
+                {service.title || l('Новая услуга', 'New service')}
+              </strong>
+              <span className="mt-1 block truncate text-[11px] text-[var(--text-muted)]">
+                {service.priceType === 'negotiable'
+                  ? l('Цена по договорённости', 'Price by agreement')
+                  : `${service.priceType === 'from' ? l('от ', 'from ') : ''}${formatPrice(service.price, service.currency)}${service.durationText ? ` · ${service.durationText}` : ''}`}
+              </span>
+            </button>
+            <Switch
+              aria-label={l('Показывать услугу', 'Show service')}
+              checked={service.enabled}
+              onClick={() =>
                 updateCard((current) => ({
                   ...current,
                   services: current.services.map((item) =>
-                    item.id === service.id ? { ...item, title: event.target.value } : item,
+                    item.id === service.id ? { ...item, enabled: !item.enabled } : item,
                   ),
                 }))
               }
             />
-            <label className="flex items-center gap-2 text-xs">
+            <MoreVertical size={18} className="mt-1 text-[var(--text-muted)]" aria-hidden="true" />
+          </div>
+          {editingId === service.id ? (
+            <div className="grid gap-3 border-t border-[var(--border)] pt-3">
               <input
-                type="checkbox"
-                checked={service.enabled}
-                onChange={() =>
+                aria-label={l('Название услуги', 'Service name')}
+                className="field-control min-h-11 font-semibold"
+                value={service.title}
+                placeholder={l('Название услуги', 'Service name')}
+                onChange={(event) =>
                   updateCard((current) => ({
                     ...current,
                     services: current.services.map((item) =>
-                      item.id === service.id ? { ...item, enabled: !item.enabled } : item,
+                      item.id === service.id ? { ...item, title: event.target.value } : item,
                     ),
                   }))
                 }
               />
-              {l('Показывать', 'Show')}
-            </label>
-          </div>
-          <textarea
-            aria-label="Описание услуги"
-            className="field-control"
-            value={service.description}
-            placeholder={l(
-              'Коротко опишите результат для клиента',
-              'Briefly describe the outcome for the client',
-            )}
-            onChange={(event) =>
-              updateCard((current) => ({
-                ...current,
-                services: current.services.map((item) =>
-                  item.id === service.id ? { ...item, description: event.target.value } : item,
-                ),
-              }))
-            }
-          />
-          {!service.title.trim() ? (
-            <p className="error-text m-0">{l('Укажите название услуги', 'Enter a service name')}</p>
+              <textarea
+                aria-label={l('Описание услуги', 'Service description')}
+                className="field-control"
+                value={service.description}
+                placeholder={l(
+                  'Коротко опишите результат для клиента',
+                  'Briefly describe the outcome for the client',
+                )}
+                onChange={(event) =>
+                  updateCard((current) => ({
+                    ...current,
+                    services: current.services.map((item) =>
+                      item.id === service.id ? { ...item, description: event.target.value } : item,
+                    ),
+                  }))
+                }
+              />
+              {!service.title.trim() ? (
+                <p className="error-text m-0">
+                  {l('Укажите название услуги', 'Enter a service name')}
+                </p>
+              ) : null}
+            </div>
           ) : null}
-          <div className="flex justify-end gap-1">
+          <div className={`justify-end gap-1 ${editingId === service.id ? 'flex' : 'hidden'}`}>
             <button
               aria-label="Выше"
               className="grid size-10 place-items-center"
