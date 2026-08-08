@@ -312,6 +312,14 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
     [],
   )
 
+  const refreshDashboard = useCallback(async () => {
+    if (clientEnv.demoMode) return
+    const dashboard = await loadOwnerDashboard()
+    setOwner(dashboard.owner)
+    setStats(dashboard.stats)
+    setLeads(dashboard.leads)
+  }, [])
+
   const ready = Boolean(card && owner && stats)
   const value = useMemo<CardStoreValue | null>(
     () => ({
@@ -356,13 +364,7 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
           throw error
         }
       },
-      refreshDashboard: async () => {
-        if (clientEnv.demoMode) return
-        const dashboard = await loadOwnerDashboard()
-        setOwner(dashboard.owner)
-        setStats(dashboard.stats)
-        setLeads(dashboard.leads)
-      },
+      refreshDashboard,
     }),
     [
       card,
@@ -374,6 +376,7 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
       publicSync,
       publicationError,
       publicationOperation,
+      refreshDashboard,
       runPublicationCommand,
       saveError,
       saveNow,

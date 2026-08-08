@@ -38,38 +38,40 @@ export default function StatsPage() {
   }, [refreshDashboard])
 
   useEffect(() => {
+    if (!clientEnv.demoMode) return
+    const daily = period === '7' ? dashboardStats.daily.slice(-7) : dashboardStats.daily
+    const totals = {
+      views: dashboardStats.totalViews,
+      primaryClicks: dashboardStats.totalPrimaryClicks,
+      linkClicks: dashboardStats.totalLinkClicks,
+      projectOpens: dashboardStats.totalProjectOpens,
+      leads: dashboardStats.totalLeads,
+      shares: dashboardStats.totalShares,
+    }
+    setData({
+      period,
+      range: { from: daily[0]?.date ?? null, to: daily[daily.length - 1]?.date ?? null },
+      totals,
+      deltas: { views: 18, primaryClicks: 12, leads: null },
+      series: daily.map((item) => ({ label: item.date, views: item.views })),
+      averageViews: daily.length
+        ? Math.round(daily.reduce((sum, item) => sum + item.views, 0) / daily.length)
+        : 0,
+      popularActions: [
+        { label: 'primary', value: totals.primaryClicks },
+        { label: 'links', value: totals.linkClicks },
+        { label: 'projects', value: totals.projectOpens },
+        { label: 'share', value: totals.shares },
+      ],
+    })
+    setLoading(false)
+  }, [dashboardStats, period])
+
+  useEffect(() => {
+    if (clientEnv.demoMode) return
     let active = true
     setLoading(true)
     setError(false)
-    if (clientEnv.demoMode) {
-      const daily = period === '7' ? dashboardStats.daily.slice(-7) : dashboardStats.daily
-      const totals = {
-        views: dashboardStats.totalViews,
-        primaryClicks: dashboardStats.totalPrimaryClicks,
-        linkClicks: dashboardStats.totalLinkClicks,
-        projectOpens: dashboardStats.totalProjectOpens,
-        leads: dashboardStats.totalLeads,
-        shares: dashboardStats.totalShares,
-      }
-      setData({
-        period,
-        range: { from: daily[0]?.date ?? null, to: daily[daily.length - 1]?.date ?? null },
-        totals,
-        deltas: { views: 18, primaryClicks: 12, leads: null },
-        series: daily.map((item) => ({ label: item.date, views: item.views })),
-        averageViews: daily.length
-          ? Math.round(daily.reduce((sum, item) => sum + item.views, 0) / daily.length)
-          : 0,
-        popularActions: [
-          { label: 'primary', value: totals.primaryClicks },
-          { label: 'links', value: totals.linkClicks },
-          { label: 'projects', value: totals.projectOpens },
-          { label: 'share', value: totals.shares },
-        ],
-      })
-      setLoading(false)
-      return
-    }
     void loadOwnerStats(period)
       .then((result) => {
         if (active) setData(result)
@@ -83,7 +85,7 @@ export default function StatsPage() {
     return () => {
       active = false
     }
-  }, [attempt, dashboardStats, period])
+  }, [attempt, period])
 
   const max = useMemo(() => Math.max(1, ...(data?.series.map((item) => item.views) ?? [1])), [data])
   const axis = [max, Math.round(max * 0.66), Math.round(max * 0.33), 0]

@@ -479,6 +479,26 @@ export function percentDelta(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 100)
 }
 
+function isoDate(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+export function statsPeriodRange(days: number, now = new Date()) {
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  const from = new Date(to)
+  from.setUTCDate(from.getUTCDate() - days + 1)
+  const previousTo = new Date(from)
+  previousTo.setUTCDate(previousTo.getUTCDate() - 1)
+  const previousFrom = new Date(previousTo)
+  previousFrom.setUTCDate(previousFrom.getUTCDate() - days + 1)
+  return {
+    from: isoDate(from),
+    to: isoDate(to),
+    previousFrom: isoDate(previousFrom),
+    previousTo: isoDate(previousTo),
+  }
+}
+
 export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<PeriodStats> {
   const sql = await database()
   if (period === 'all') {
@@ -509,6 +529,7 @@ export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<P
     }
   }
   const days = period === '7' ? 7 : 30
+  const range = statsPeriodRange(days)
   const [currentRaw, previousRaw] = await Promise.all([
     sql`
       SELECT TO_CHAR(series.day, 'DD.MM') AS label,
@@ -518,8 +539,9 @@ export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<P
         COALESCE(stats.project_opens, 0)::int AS project_opens,
         COALESCE(stats.leads, 0)::int AS leads,
         COALESCE(stats.shares, 0)::int AS shares
-      FROM GENERATE_SERIES(CURRENT_DATE - (${days} - 1), CURRENT_DATE, INTERVAL '1 day') AS series(day)
-      LEFT JOIN cardly_daily_stats stats ON stats.owner_uid = ${uid} AND stats.day = series.day
+      FROM GENERATE_SERIES(${range.from}::date, ${range.to}::date, INTERVAL '1 day') AS series(day)
+      LEFT JOIN cardly_daily_stats stats
+        ON stats.owner_uid = ${uid} AND stats.day = series.day::date
       ORDER BY series.day
     `,
     sql`
@@ -531,19 +553,16 @@ export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<P
         COALESCE(SUM(shares), 0)::int AS shares
       FROM cardly_daily_stats
       WHERE owner_uid = ${uid}
-        AND day BETWEEN CURRENT_DATE - (${days} * 2 - 1) AND CURRENT_DATE - ${days}
+        AND day BETWEEN ${range.previousFrom}::date AND ${range.previousTo}::date
     `,
   ])
   const rows = rowsOf<PeriodMetricRow>(currentRaw)
   const previousRows = rowsOf<PeriodMetricRow>(previousRaw)
   const totals = metricTotals(rows)
   const previous = metricTotals(previousRows)
-  const today = new Date()
-  const from = new Date(today)
-  from.setUTCDate(from.getUTCDate() - days + 1)
   return {
     period,
-    range: { from: from.toISOString().slice(0, 10), to: today.toISOString().slice(0, 10) },
+    range: { from: range.from, to: range.to },
     totals,
     deltas: {
       views: percentDelta(totals.views, previous.views),
