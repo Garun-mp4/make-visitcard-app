@@ -7,9 +7,14 @@ const args = new Set(process.argv.slice(2))
 const slugArg = process.argv.find((value) => value.startsWith('--slug='))
 const slug = slugArg?.slice('--slug='.length) ?? 'alexey'
 const confirmed = args.has('--confirm')
-const databaseUrl = process.env.DATABASE_URL
+const databaseUrl = [
+  process.env.DATABASE_URL,
+  process.env.DATABASE_POSTGRES_URL,
+  process.env.DATABASE_URL_UNPOOLED,
+  process.env.DATABASE_POSTGRES_URL_NON_POOLING,
+].find((value) => value?.startsWith('postgres://') || value?.startsWith('postgresql://'))
 
-if (!databaseUrl) throw new Error('DATABASE_URL is required')
+if (!databaseUrl) throw new Error('A valid Neon/Postgres database URL is required')
 if (!/^[a-z0-9-]{3,30}$/.test(slug)) throw new Error('Invalid --slug value')
 
 const sql = neon(databaseUrl)
