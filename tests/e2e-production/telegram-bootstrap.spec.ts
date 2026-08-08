@@ -95,8 +95,9 @@ test('Telegram bootstrap creates and persists a clean onboarding draft', async (
   await page.route('https://telegram.org/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }),
   )
-  await page.route('**/api/auth/telegram', (route) =>
-    route.fulfill({
+  await page.route('**/api/auth/telegram', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
@@ -106,8 +107,8 @@ test('Telegram bootstrap creates and persists a clean onboarding draft', async (
         dashboard,
         preferences: { locale: 'ru', leadNotificationsEnabled: true },
       }),
-    }),
-  )
+    })
+  })
   await page.route('**/api/cards/me', async (route) => {
     if (route.request().method() === 'PUT') {
       savedCard = {

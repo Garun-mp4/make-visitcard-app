@@ -237,7 +237,7 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
     [card, leads, online, owner, preferences, saveError, saveNow, saveStatus, stats, updateCard],
   )
 
-  if (auth.status === 'authenticated' && !ready)
+  if ((auth.status === 'loading' || auth.status === 'authenticated') && !ready)
     return (
       <div className="app-shell grid min-h-[100dvh] place-items-center" role="status">
         {i18n.language.startsWith('en') ? 'Loading Cardly…' : 'Загружаем Cardly…'}
