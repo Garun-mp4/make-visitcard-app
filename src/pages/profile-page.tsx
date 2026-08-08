@@ -102,7 +102,10 @@ export default function ProfilePage() {
           [
             ExternalLink,
             t('profile.publicCard'),
-            () => void withPublicCard(() => void navigate(`/c/${card.publication.slug}`)),
+            () =>
+              void withPublicCard(
+                () => void navigate('/app/preview', { state: { returnTo: '/app/profile' } }),
+              ),
           ],
           [
             Copy,

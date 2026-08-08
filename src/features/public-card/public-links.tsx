@@ -4,7 +4,15 @@ import type { CardView } from '@shared/types'
 import { telegram } from '@/lib/telegram'
 import { recordPublicEvent } from '@/services/public-analytics'
 
-export function PublicLinks({ card, className = '' }: { card: CardView; className?: string }) {
+export function PublicLinks({
+  card,
+  className = '',
+  analyticsEnabled = true,
+}: {
+  card: CardView
+  className?: string
+  analyticsEnabled?: boolean
+}) {
   const links = card.links.filter((link) => link.enabled && link.public && link.url)
   if (!links.length) return null
   return (
@@ -14,7 +22,7 @@ export function PublicLinks({ card, className = '' }: { card: CardView; classNam
           key={link.id}
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm"
           onClick={() => {
-            recordPublicEvent(card.publication.slug, 'link_click')
+            if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'link_click')
             telegram.openLink(link.url)
           }}
         >

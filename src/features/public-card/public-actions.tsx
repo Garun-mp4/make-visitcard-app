@@ -10,13 +10,22 @@ import { shareOrCopy } from '@/lib/share'
 import { recordPublicEvent } from '@/services/public-analytics'
 import { useLocaleText } from '@/i18n/use-locale-text'
 
-export function PublicActions({ card, onShare }: { card: CardView; onShare?: () => void }) {
+export function PublicActions({
+  card,
+  onShare,
+  analyticsEnabled = true,
+  publicUrl = window.location.href,
+}: {
+  card: CardView
+  onShare?: () => void
+  analyticsEnabled?: boolean
+  publicUrl?: string
+}) {
   const feedback = useFeedback()
   const text = useLocaleText()
-  const publicUrl = window.location.href
   const share = async () => {
     onShare?.()
-    recordPublicEvent(card.publication.slug, 'share')
+    if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'share')
     const result = await shareOrCopy({
       title: card.profile.displayName,
       text: card.profile.profession,

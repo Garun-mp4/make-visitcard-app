@@ -64,12 +64,14 @@ function PublicationQr({
   slug,
   ownerName,
   compact = false,
+  onPreview,
 }: {
   id: string
   url: string
   slug: string
   ownerName: string
   compact?: boolean
+  onPreview?: () => void
 }) {
   const l = useLocaleText()
   const feedback = useFeedback()
@@ -130,6 +132,12 @@ function PublicationQr({
           <Share2 size={17} />
           {l('Поделиться', 'Share')}
         </Button>
+        {onPreview ? (
+          <Button variant="secondary" fullWidth onClick={onPreview}>
+            <Eye size={17} />
+            {l('Предпросмотр', 'Preview')}
+          </Button>
+        ) : null}
       </div>
     )
 
@@ -281,7 +289,8 @@ export default function PublicationPage() {
 
   const preview = async () => {
     if (!published) return
-    if (await ensurePublicCardReady()) void navigate(`/c/${slug}`)
+    if (await ensurePublicCardReady())
+      void navigate('/app/preview', { state: { returnTo: '/app/editor/publish' } })
     else
       feedback.notify(
         l('Сначала исправьте несохранённые изменения', 'Fix unsaved changes first'),
@@ -340,6 +349,7 @@ export default function PublicationPage() {
             url={publicUrl}
             slug={slug}
             ownerName={card.profile.displayName}
+            onPreview={() => void preview()}
           />
         ) : (
           <div className="grid min-h-full place-items-center text-center text-sm text-[var(--text-muted)]">

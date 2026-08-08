@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 import { OwnerLayout } from '@/layouts/owner-layout'
 import { PageSkeleton } from '@/components/feedback/page-skeleton'
@@ -23,6 +23,7 @@ const PublicationPage = lazy(() => import('@/pages/publication-page'))
 const StatsPage = lazy(() => import('@/pages/stats-page'))
 const ProfilePage = lazy(() => import('@/pages/profile-page'))
 const PublicCardPage = lazy(() => import('@/pages/public-card-page'))
+const OwnerPreviewPage = lazy(() => import('@/pages/owner-preview-page'))
 const NotFoundPage = lazy(() => import('@/pages/not-found-page'))
 
 function OwnerGuard() {
@@ -43,7 +44,7 @@ function OwnerGuard() {
       />
     )
   if (!card.onboardingCompleted) return <Navigate to="/app/onboarding" replace />
-  return <OwnerLayout />
+  return <Outlet />
 }
 
 function OnboardingGuard() {
@@ -74,18 +75,21 @@ export function AppRoutes() {
         <Route path="/" element={<LaunchPage />} />
         <Route path="/app/onboarding" element={<OnboardingGuard />} />
         <Route path="/app" element={<OwnerGuard />}>
-          <Route index element={<Navigate to="card" replace />} />
-          <Route path="card" element={<OwnerHomePage />} />
-          <Route path="editor" element={<EditorIndexPage />} />
-          <Route path="editor/basic" element={<BasicEditorPage />} />
-          <Route path="editor/contacts" element={<ContactsEditorPage />} />
-          <Route path="editor/skills" element={<SkillsEditorPage />} />
-          <Route path="editor/services" element={<ServicesEditorPage />} />
-          <Route path="editor/projects" element={<ProjectsEditorPage />} />
-          <Route path="editor/appearance" element={<AppearanceEditorPage />} />
-          <Route path="editor/publish" element={<PublicationPage />} />
-          <Route path="stats" element={<StatsPage />} />
-          <Route path="profile" element={<ProfilePage />} />
+          <Route path="preview" element={<OwnerPreviewPage />} />
+          <Route element={<OwnerLayout />}>
+            <Route index element={<Navigate to="card" replace />} />
+            <Route path="card" element={<OwnerHomePage />} />
+            <Route path="editor" element={<EditorIndexPage />} />
+            <Route path="editor/basic" element={<BasicEditorPage />} />
+            <Route path="editor/contacts" element={<ContactsEditorPage />} />
+            <Route path="editor/skills" element={<SkillsEditorPage />} />
+            <Route path="editor/services" element={<ServicesEditorPage />} />
+            <Route path="editor/projects" element={<ProjectsEditorPage />} />
+            <Route path="editor/appearance" element={<AppearanceEditorPage />} />
+            <Route path="editor/publish" element={<PublicationPage />} />
+            <Route path="stats" element={<StatsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
         </Route>
         <Route path="/c/:slug" element={<PublicCardPage />} />
         <Route path="/not-found" element={<NotFoundPage />} />

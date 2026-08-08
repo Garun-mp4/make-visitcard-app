@@ -13,7 +13,15 @@ import { apiRequest, ApiError } from '@/services/api-client'
 import { telegram } from '@/lib/telegram'
 import { useLocaleText } from '@/i18n/use-locale-text'
 
-export function LeadForm({ slug, ownerName }: { slug: string; ownerName: string }) {
+export function LeadForm({
+  slug,
+  ownerName,
+  previewMode = false,
+}: {
+  slug: string
+  ownerName: string
+  previewMode?: boolean
+}) {
   const recipientName = ownerName.trim().split(/\s+/)[0] || ownerName
   const { t } = useTranslation()
   const l = useLocaleText()
@@ -37,6 +45,15 @@ export function LeadForm({ slug, ownerName }: { slug: string; ownerName: string 
 
   const submit = async (value: LeadInput) => {
     setServerError('')
+    if (previewMode) {
+      setServerError(
+        l(
+          'Это предпросмотр владельца — заявка не отправлена.',
+          'This is the owner preview — the request was not sent.',
+        ),
+      )
+      return
+    }
     if (!navigator.onLine) {
       setServerError(
         l(

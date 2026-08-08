@@ -9,15 +9,25 @@ import { ProjectDialog } from '@/features/public-card/project-dialog'
 import { useTranslation } from 'react-i18next'
 import { recordPublicEvent } from '@/services/public-analytics'
 
-export function PublicCardRenderer({ card }: { card: CardView }) {
+export function PublicCardRenderer({
+  card,
+  analyticsEnabled = true,
+  publicUrl,
+}: {
+  card: CardView
+  analyticsEnabled?: boolean
+  publicUrl?: string
+}) {
   const { t } = useTranslation()
   const [project, setProject] = useState<Project | null>(null)
   const [leadOpen, setLeadOpen] = useState(false)
   const closeProject = useCallback(() => setProject(null), [])
   const common = {
     card,
+    analyticsEnabled,
+    publicUrl,
     onProject: (value: Project) => {
-      recordPublicEvent(card.publication.slug, 'project_open')
+      if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'project_open')
       setProject(value)
     },
     onLead: () => setLeadOpen(true),
@@ -45,7 +55,11 @@ export function PublicCardRenderer({ card }: { card: CardView }) {
             >
               {t('publicCard.close')}
             </button>
-            <LeadForm slug={card.publication.slug} ownerName={card.profile.displayName} />
+            <LeadForm
+              slug={card.publication.slug}
+              ownerName={card.profile.displayName}
+              previewMode={!analyticsEnabled}
+            />
           </>
         ) : null}
       </dialog>

@@ -78,7 +78,9 @@ export default function OwnerHomePage() {
             <Button
               className="px-2 text-xs"
               onClick={() =>
-                void withPublicCard(() => void navigate(`/c/${card.publication.slug}`))
+                void withPublicCard(
+                  () => void navigate('/app/preview', { state: { returnTo: '/app/card' } }),
+                )
               }
             >
               <ExternalLink size={15} />

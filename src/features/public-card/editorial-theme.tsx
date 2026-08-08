@@ -15,10 +15,14 @@ export function EditorialTheme({
   card,
   onProject,
   onLead,
+  analyticsEnabled,
+  publicUrl,
 }: {
   card: CardView
   onProject: (project: Project) => void
   onLead: () => void
+  analyticsEnabled: boolean
+  publicUrl?: string
 }) {
   const { t } = useTranslation()
   const l = useLocaleText()
@@ -34,7 +38,7 @@ export function EditorialTheme({
           <a href="#editorial-work">{t('publicCard.projects')}</a>
           <button onClick={onLead}>{t('publicCard.contacts')}</button>
         </nav>
-        <PublicActions card={card} />
+        <PublicActions card={card} analyticsEnabled={analyticsEnabled} publicUrl={publicUrl} />
       </header>
       <main className="px-6 pb-20 pt-14 lg:px-[5.5vw]">
         <section className="grid min-h-[470px] gap-12 lg:grid-cols-[1.45fr_0.85fr] lg:gap-28">
@@ -58,7 +62,7 @@ export function EditorialTheme({
             </p>
             <button
               onClick={() => {
-                recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'primary_cta_click')
                 telegram.openLink(card.primaryAction.value)
               }}
               className="flex min-h-14 items-center justify-between border-t border-[#d7c8b2] pt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#a94e32]"
@@ -116,7 +120,7 @@ export function EditorialTheme({
             </button>
           </section>
         ) : null}
-        <PublicLinks card={card} className="mt-8" />
+        <PublicLinks card={card} className="mt-8" analyticsEnabled={analyticsEnabled} />
       </main>
     </div>
   )

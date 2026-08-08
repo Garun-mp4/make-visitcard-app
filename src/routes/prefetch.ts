@@ -6,5 +6,6 @@ export function prefetchOwnerRoutes(): void {
     import('@/pages/editor/contacts-editor-page'),
     import('@/pages/stats-page'),
     import('@/pages/profile-page'),
+    import('@/pages/owner-preview-page'),
   ])
 }

@@ -16,10 +16,14 @@ export function CleanTheme({
   card,
   onProject,
   onLead,
+  analyticsEnabled,
+  publicUrl,
 }: {
   card: CardView
   onProject: (project: Project) => void
   onLead: () => void
+  analyticsEnabled: boolean
+  publicUrl?: string
 }) {
   const { t } = useTranslation()
   const l = useLocaleText()
@@ -43,7 +47,7 @@ export function CleanTheme({
           <a href="#projects">{t('publicCard.projects')}</a>
           <a href="#contacts">{t('publicCard.contacts')}</a>
         </nav>
-        <PublicActions card={card} />
+        <PublicActions card={card} analyticsEnabled={analyticsEnabled} publicUrl={publicUrl} />
       </header>
       <main className="mx-auto max-w-[1240px] px-5 pb-16 pt-12 lg:px-10 lg:pt-16">
         <section className="grid gap-10 lg:grid-cols-[1.65fr_0.9fr] lg:items-center lg:gap-20">
@@ -74,7 +78,8 @@ export function CleanTheme({
             <div className="mt-6 flex flex-wrap gap-3">
               <Button
                 onClick={() => {
-                  recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                  if (analyticsEnabled)
+                    recordPublicEvent(card.publication.slug, 'primary_cta_click')
                   telegram.openLink(card.primaryAction.value)
                 }}
               >
@@ -171,7 +176,7 @@ export function CleanTheme({
             <Button onClick={onLead}>{t('publicCard.write')}</Button>
           </section>
         ) : null}
-        <PublicLinks card={card} className="mt-6" />
+        <PublicLinks card={card} className="mt-6" analyticsEnabled={analyticsEnabled} />
       </main>
     </div>
   )

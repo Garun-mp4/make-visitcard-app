@@ -15,10 +15,14 @@ export function DarkTheme({
   card,
   onProject,
   onLead,
+  analyticsEnabled,
+  publicUrl,
 }: {
   card: CardView
   onProject: (project: Project) => void
   onLead: () => void
+  analyticsEnabled: boolean
+  publicUrl?: string
 }) {
   const { t } = useTranslation()
   const l = useLocaleText()
@@ -35,7 +39,7 @@ export function DarkTheme({
           <a href="#dark-services">{t('publicCard.services')}</a>
           <button onClick={onLead}>{t('publicCard.contacts')}</button>
         </nav>
-        <PublicActions card={card} />
+        <PublicActions card={card} analyticsEnabled={analyticsEnabled} publicUrl={publicUrl} />
       </header>
       <main className="px-6 pb-20 pt-14 lg:px-[5.5vw] lg:pt-18">
         <section className="grid min-h-[430px] gap-12 lg:grid-cols-[1.4fr_0.8fr] lg:gap-24">
@@ -52,7 +56,7 @@ export function DarkTheme({
             <Button
               className="mt-5 min-w-64 rounded-lg bg-[#dca56d] font-mono text-xs uppercase tracking-[0.1em] text-[#17120e]"
               onClick={() => {
-                recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'primary_cta_click')
                 telegram.openLink(card.primaryAction.value)
               }}
             >
@@ -117,7 +121,7 @@ export function DarkTheme({
               </article>
             ))}
         </section>
-        <PublicLinks card={card} className="mt-8" />
+        <PublicLinks card={card} className="mt-8" analyticsEnabled={analyticsEnabled} />
       </main>
     </div>
   )
