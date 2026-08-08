@@ -1,14 +1,16 @@
 import type { CardView, Project } from '@shared/types'
 import { formatPrice } from '@/lib/utils'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function ServicePrice({ card, index }: { card: CardView; index: number }) {
+  const l = useLocaleText()
   const service = card.services[index]
   if (!service || service.priceType === 'hidden') return null
-  const prefix = service.priceType === 'from' ? 'от ' : ''
+  const prefix = service.priceType === 'from' ? l('от ', 'from ') : ''
   return (
     <span>
       {service.priceType === 'negotiable'
-        ? 'По договорённости'
+        ? l('По договорённости', 'By agreement')
         : `${prefix}${formatPrice(service.price, service.currency)}`}
     </span>
   )

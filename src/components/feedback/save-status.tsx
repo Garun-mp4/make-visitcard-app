@@ -1,17 +1,30 @@
 import { AlertCircle, Check, LoaderCircle } from 'lucide-react'
 
 import type { SaveError, SaveStatus as SaveStatusValue } from '@/app/card-store'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
-export function SaveStatus({ status, error, onRetry }: { status: SaveStatusValue; error?: SaveError | null; onRetry?: () => void }) {
+export function SaveStatus({
+  status,
+  error,
+  onRetry,
+}: {
+  status: SaveStatusValue
+  error?: SaveError | null
+  onRetry?: () => void
+}) {
+  const l = useLocaleText()
   const config = {
-    idle: { label: 'Черновик', icon: null },
-    dirty: { label: 'Есть изменения', icon: null },
+    idle: { label: l('Черновик', 'Draft'), icon: null },
+    dirty: { label: l('Есть изменения', 'Unsaved changes'), icon: null },
     saving: {
-      label: 'Сохраняем…',
+      label: l('Сохраняем…', 'Saving…'),
       icon: <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />,
     },
-    saved: { label: 'Сохранено', icon: <Check size={13} aria-hidden="true" /> },
-    error: { label: 'Ошибка сохранения', icon: <AlertCircle size={13} aria-hidden="true" /> },
+    saved: { label: l('Сохранено', 'Saved'), icon: <Check size={13} aria-hidden="true" /> },
+    error: {
+      label: l('Ошибка сохранения', 'Save failed'),
+      icon: <AlertCircle size={13} aria-hidden="true" />,
+    },
   }[status]
   return (
     <span
@@ -22,11 +35,17 @@ export function SaveStatus({ status, error, onRetry }: { status: SaveStatusValue
       {config.icon}
       {config.label}
       {status === 'error' && error ? (
-        <span className="sr-only">{error.message}{error.requestId ? `, request ID ${error.requestId}` : ''}</span>
+        <span
+          className="max-w-40 truncate text-[10px] text-[var(--error)]"
+          title={`${error.message}${error.requestId ? ` · ${error.requestId}` : ''}`}
+        >
+          {error.message}
+          {error.requestId ? ` · ${error.requestId}` : ''}
+        </span>
       ) : null}
       {status === 'error' && onRetry ? (
         <button className="font-semibold text-[var(--error)] underline" onClick={onRetry}>
-          Повторить
+          {l('Повторить', 'Retry')}
         </button>
       ) : null}
     </span>

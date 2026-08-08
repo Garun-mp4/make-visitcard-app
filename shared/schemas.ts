@@ -208,7 +208,9 @@ export const publishableCardSchema = cardDraftSchema.superRefine((card, context)
     [publishablePrimaryActionSchema, card.primaryAction, ['primaryAction']],
     [slugSchema, card.publication.slug, ['publication', 'slug']],
   ]
-  card.skills.forEach((item, index) => checks.push([publishableSkillSchema, item, ['skills', index]]))
+  card.skills.forEach((item, index) =>
+    checks.push([publishableSkillSchema, item, ['skills', index]]),
+  )
   card.links.forEach((item, index) => {
     if (item.enabled && item.public) checks.push([publishableLinkSchema, item, ['links', index]])
   })
@@ -246,6 +248,15 @@ export const leadSchema = z.object({
   source: z.enum(['web', 'telegram', 'share', 'unknown']),
   website: z.string().max(0),
 })
+
+export const ownerPreferencesSchema = z.object({
+  locale: z.enum(['ru', 'en']),
+  leadNotificationsEnabled: z.boolean(),
+})
+
+export const ownerPreferencesPatchSchema = ownerPreferencesSchema
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, 'Укажите хотя бы одну настройку')
 
 export const analyticsEventSchema = z.object({
   type: z.enum([

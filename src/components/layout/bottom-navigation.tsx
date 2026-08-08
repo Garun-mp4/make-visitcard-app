@@ -15,7 +15,7 @@ export function BottomNavigation() {
   const { t } = useTranslation()
   return (
     <nav
-      aria-label="Основная навигация"
+      aria-label={t('common.mainNavigation')}
       className="fixed inset-x-0 bottom-0 z-20 mx-auto w-full max-w-[430px] px-4 pb-[max(10px,var(--tg-safe-bottom))]"
     >
       <div className="grid h-[72px] grid-cols-4 rounded-[22px] border border-[var(--border)] bg-[color-mix(in_srgb,var(--surface)_94%,transparent)] p-1 shadow-[var(--shadow-floating)] backdrop-blur-xl">

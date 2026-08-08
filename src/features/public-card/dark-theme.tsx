@@ -5,6 +5,11 @@ import { Button } from '@/components/ui/button'
 import { PublicActions } from '@/features/public-card/public-actions'
 import { ProjectCover } from '@/features/public-card/theme-shared'
 import { telegram } from '@/lib/telegram'
+import { accentStyle } from '@/lib/accent-preset'
+import { useTranslation } from 'react-i18next'
+import { recordPublicEvent } from '@/services/public-analytics'
+import { PublicLinks } from '@/features/public-card/public-links'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function DarkTheme({
   card,
@@ -15,15 +20,20 @@ export function DarkTheme({
   onProject: (project: Project) => void
   onLead: () => void
 }) {
+  const { t } = useTranslation()
+  const l = useLocaleText()
   const projects = card.projects.filter((item) => item.enabled)
   return (
-    <div className="min-h-[100dvh] bg-[#111612] text-[#f0f3ef] [--surface:#171d19] [--surface-secondary:#1d251f] [--surface-elevated:#222c25] [--border:#303a33] [--border-strong:#465349] [--text-primary:#f0f3ef] [--text-secondary:#b4beb6] [--text-muted:#7f8c82] [--accent:#dca56d] [--accent-hover:#e7b37d] [--accent-soft:#263e34] [--accent-contrast:#17120e]">
+    <div
+      style={accentStyle(card.appearance.accentPreset, true)}
+      className="min-h-[100dvh] bg-[#111612] text-[#f0f3ef] [--surface:#171d19] [--surface-secondary:#1d251f] [--surface-elevated:#222c25] [--border:#303a33] [--border-strong:#465349] [--text-primary:#f0f3ef] [--text-secondary:#b4beb6] [--text-muted:#7f8c82]"
+    >
       <header className="flex min-h-20 items-center justify-between border-b border-[#2b332d] px-5 font-mono text-[10px] uppercase tracking-[0.18em] lg:px-[5.5vw]">
         <span className="text-[#dca56d]">AV / design + code</span>
         <nav className="hidden gap-8 md:flex">
-          <a href="#dark-work">Work</a>
-          <a href="#dark-services">Services</a>
-          <button onClick={onLead}>Contact</button>
+          <a href="#dark-work">{t('publicCard.projects')}</a>
+          <a href="#dark-services">{t('publicCard.services')}</a>
+          <button onClick={onLead}>{t('publicCard.contacts')}</button>
         </nav>
         <PublicActions card={card} />
       </header>
@@ -41,7 +51,10 @@ export function DarkTheme({
             </p>
             <Button
               className="mt-5 min-w-64 rounded-lg bg-[#dca56d] font-mono text-xs uppercase tracking-[0.1em] text-[#17120e]"
-              onClick={() => telegram.openLink(card.primaryAction.value)}
+              onClick={() => {
+                recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                telegram.openLink(card.primaryAction.value)
+              }}
             >
               {card.primaryAction.label}
               <ArrowUpRight size={17} />
@@ -68,8 +81,10 @@ export function DarkTheme({
         {projects.length > 0 ? (
           <section id="dark-work" className="mt-8">
             <div className="mb-5 flex justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-[#dca56d]">
-              <span>Selected work / 01–0{projects.length}</span>
-              <button onClick={onLead}>Services ↗</button>
+              <span>
+                {l('Избранные проекты', 'Selected work')} / 01–0{projects.length}
+              </span>
+              <button onClick={onLead}>{t('publicCard.services')} ↗</button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {projects.map((project, index) => (
@@ -94,12 +109,15 @@ export function DarkTheme({
             .filter((s) => s.enabled)
             .map((service) => (
               <article key={service.id} className="bg-[#171d19] p-6">
-                <div className="font-mono text-[10px] uppercase text-[#dca56d]">Service</div>
+                <div className="font-mono text-[10px] uppercase text-[#dca56d]">
+                  {t('publicCard.services')}
+                </div>
                 <h2 className="heading-font text-xl">{service.title}</h2>
                 <p className="text-sm text-[#b4beb6]">{service.description}</p>
               </article>
             ))}
         </section>
+        <PublicLinks card={card} className="mt-8" />
       </main>
     </div>
   )

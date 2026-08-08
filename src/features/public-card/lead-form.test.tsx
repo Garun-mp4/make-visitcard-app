@@ -15,7 +15,7 @@ describe('LeadForm', () => {
   beforeEach(() => Object.defineProperty(navigator, 'onLine', { value: true, configurable: true }))
 
   it('validates required data and shows success after submission', async () => {
-    render(<LeadForm slug="alexey" />)
+    render(<LeadForm slug="alexey" ownerName="Алексей Волков" />)
     await userEvent.type(screen.getByLabelText('Имя'), 'Мария')
     await userEvent.type(screen.getByLabelText('Контакт'), 'maria@example.com')
     await userEvent.type(screen.getByLabelText('Сообщение'), 'Хочу обсудить дизайн продукта')

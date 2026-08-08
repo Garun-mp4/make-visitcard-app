@@ -6,20 +6,25 @@ import { MiniCardPreview } from '@/features/card/mini-card-preview'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/status-badge'
 import { copyText } from '@/lib/utils'
+import { useFeedback } from '@/components/feedback/feedback-provider'
+import { shareOrCopy } from '@/lib/share'
+import { useTranslation } from 'react-i18next'
 
 export default function OwnerHomePage() {
   const navigate = useNavigate()
   const { card, saveStatus } = useCardStore()
+  const feedback = useFeedback()
+  const { t } = useTranslation()
   const publicUrl = `${window.location.origin}/c/${card.publication.slug}`
   return (
     <main className="owner-mobile-content lg:max-w-[1180px] lg:py-8">
       <header className="page-header">
-        <h1 className="page-title">Визитка</h1>
+        <h1 className="page-title">{t('home.title')}</h1>
         <span className="text-xl text-[var(--text-muted)]">•••</span>
       </header>
       <div className="mb-3 flex items-center justify-between">
         <StatusBadge tone={card.publication.published ? 'success' : 'neutral'}>
-          {card.publication.published ? 'Опубликовано' : 'Черновик'}
+          {card.publication.published ? t('home.published') : t('home.draft')}
         </StatusBadge>
         <span className="text-[11px] text-[var(--text-muted)]">Обновлена сегодня, 10:24</span>
       </div>
@@ -37,7 +42,15 @@ export default function OwnerHomePage() {
             <button
               aria-label="Скопировать ссылку"
               className="grid size-11 place-items-center text-[var(--accent)]"
-              onClick={() => void copyText(publicUrl)}
+              onClick={() =>
+                card.publication.published
+                  ? void copyText(publicUrl).then((copied) =>
+                      copied
+                        ? feedback.notify(t('feedback.copied'), 'success')
+                        : feedback.revealLink(t('profile.copyLink'), publicUrl),
+                    )
+                  : navigate('/app/editor/publish')
+              }
             >
               <Copy size={19} />
             </button>
@@ -50,10 +63,16 @@ export default function OwnerHomePage() {
           <div className="grid grid-cols-3 gap-2">
             <Button
               className="px-2 text-xs"
-              onClick={() => navigate(`/c/${card.publication.slug}`)}
+              onClick={() =>
+                navigate(
+                  card.publication.published
+                    ? `/c/${card.publication.slug}`
+                    : '/app/editor/publish',
+                )
+              }
             >
               <ExternalLink size={15} />
-              Открыть
+              {t('home.open')}
             </Button>
             <Button
               className="px-2 text-xs"
@@ -61,24 +80,33 @@ export default function OwnerHomePage() {
               onClick={() => navigate('/app/editor')}
             >
               <Pencil size={15} />
-              Изменить
+              {t('home.edit')}
             </Button>
             <Button
               className="px-2 text-xs"
               variant="secondary"
-              onClick={() => void navigator.share?.({ url: publicUrl })}
+              onClick={() =>
+                card.publication.published
+                  ? void shareOrCopy({ title: card.profile.displayName, url: publicUrl }).then(
+                      (result) =>
+                        result === 'copied'
+                          ? feedback.notify(t('feedback.copied'), 'success')
+                          : result === 'manual'
+                            ? feedback.revealLink(t('common.share'), publicUrl)
+                            : feedback.notify(t('feedback.shareOpened'), 'success'),
+                    )
+                  : navigate('/app/editor/publish')
+              }
             >
               <Share2 size={15} />
               Поделиться
             </Button>
           </div>
           <div className="surface rounded-2xl p-5">
-            <h2 className="heading-font mt-0 text-lg">Следующий шаг</h2>
-            <p className="text-sm text-[var(--text-secondary)]">
-              Добавьте ещё один проект или проверьте публикацию перед отправкой ссылки.
-            </p>
+            <h2 className="heading-font mt-0 text-lg">{t('home.next')}</h2>
+            <p className="text-sm text-[var(--text-secondary)]">{t('home.nextDescription')}</p>
             <Button fullWidth variant="secondary" onClick={() => navigate('/app/editor/projects')}>
-              Открыть проекты
+              {t('home.projects')}
             </Button>
           </div>
         </aside>

@@ -140,8 +140,14 @@ export const telegram = {
     webApp()?.HapticFeedback?.notificationOccurred(type)
   },
   openLink(url: string) {
-    if (webApp()?.openLink) webApp()?.openLink?.(url)
-    else window.open(url, '_blank', 'noopener,noreferrer')
+    try {
+      if (/^https:\/\/t\.me\//i.test(url) && webApp()?.openTelegramLink)
+        webApp()?.openTelegramLink?.(url)
+      else if (webApp()?.openLink) webApp()?.openLink?.(url)
+      else window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    }
   },
   openTelegramLink(url: string) {
     if (webApp()?.openTelegramLink) webApp()?.openTelegramLink?.(url)

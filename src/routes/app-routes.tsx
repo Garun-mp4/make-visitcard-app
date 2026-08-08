@@ -7,6 +7,7 @@ import { BrowserOwnerBlockPage } from '@/pages/browser-owner-block-page'
 import { useAuth } from '@/features/auth/auth-provider'
 import { SystemState } from '@/components/feedback/system-state'
 import { useCardStore } from '@/app/card-store'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 const LaunchPage = lazy(() => import('@/pages/launch-page'))
 const OnboardingPage = lazy(() => import('@/pages/onboarding-page'))
@@ -25,6 +26,7 @@ const PublicCardPage = lazy(() => import('@/pages/public-card-page'))
 const NotFoundPage = lazy(() => import('@/pages/not-found-page'))
 
 function OwnerGuard() {
+  const l = useLocaleText()
   const auth = useAuth()
   const { card } = useCardStore()
   if (auth.status === 'browser') return <BrowserOwnerBlockPage />
@@ -32,9 +34,11 @@ function OwnerGuard() {
   if (auth.status === 'error')
     return (
       <SystemState
-        title="Не удалось войти"
-        description={auth.error ?? 'Повторите попытку внутри Telegram.'}
-        actionLabel="Повторить"
+        title={l('Не удалось войти', 'Sign-in failed')}
+        description={
+          auth.error ?? l('Повторите попытку внутри Telegram.', 'Try again inside Telegram.')
+        }
+        actionLabel={l('Повторить', 'Retry')}
         onAction={auth.retry}
       />
     )
@@ -43,6 +47,7 @@ function OwnerGuard() {
 }
 
 function OnboardingGuard() {
+  const l = useLocaleText()
   const auth = useAuth()
   const { card } = useCardStore()
   if (auth.status === 'browser') return <BrowserOwnerBlockPage />
@@ -50,9 +55,11 @@ function OnboardingGuard() {
   if (auth.status === 'error')
     return (
       <SystemState
-        title="Не удалось войти"
-        description={auth.error ?? 'Повторите попытку внутри Telegram.'}
-        actionLabel="Повторить"
+        title={l('Не удалось войти', 'Sign-in failed')}
+        description={
+          auth.error ?? l('Повторите попытку внутри Telegram.', 'Try again inside Telegram.')
+        }
+        actionLabel={l('Повторить', 'Retry')}
         onAction={auth.retry}
       />
     )

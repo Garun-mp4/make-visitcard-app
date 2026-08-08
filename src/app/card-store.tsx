@@ -10,21 +10,36 @@ import {
 } from 'react'
 
 import { demoCard, demoLeads, demoOwner, demoStats } from '@shared/demo-data'
-import type { CardDraft, CardStats, LeadRecord, OwnerProfile } from '@shared/types'
+import type {
+  CardDraft,
+  CardStats,
+  LeadRecord,
+  OwnerPreferences,
+  OwnerProfile,
+} from '@shared/types'
 import { clientEnv } from '@/config/client-env'
 import { cardRepository } from '@/services/card-repository'
 import { ApiError } from '@/services/api-client'
 import { useAuth } from '@/features/auth/auth-provider'
-import { saveLeadStatus } from '@/services/owner-dashboard-service'
+import {
+  loadOwnerDashboard,
+  saveLeadStatus,
+  saveOwnerPreferences,
+} from '@/services/owner-dashboard-service'
+import i18n, { changeLocale } from '@/i18n'
 
 export type SaveStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error'
-export interface SaveError { message: string; requestId?: string }
+export interface SaveError {
+  message: string
+  requestId?: string
+}
 
 interface CardStoreValue {
   card: CardDraft
   owner: OwnerProfile
   stats: CardStats
   leads: LeadRecord[]
+  preferences: OwnerPreferences
   saveStatus: SaveStatus
   saveError: SaveError | null
   online: boolean
@@ -32,6 +47,8 @@ interface CardStoreValue {
   saveNow(): Promise<void>
   resetDemo(): void
   setLeadStatus(id: string, status: LeadRecord['status']): void
+  setPreferences(patch: Partial<OwnerPreferences>): Promise<void>
+  refreshDashboard(): Promise<void>
 }
 
 const CardStoreContext = createContext<CardStoreValue | null>(null)
@@ -41,6 +58,10 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
   const [card, setCard] = useState<CardDraft | null>(clientEnv.demoMode ? demoCard : null)
   const [owner, setOwner] = useState<OwnerProfile | null>(clientEnv.demoMode ? demoOwner : null)
   const [stats, setStats] = useState<CardStats | null>(clientEnv.demoMode ? demoStats : null)
+  const [preferences, setPreferencesState] = useState<OwnerPreferences>({
+    locale: demoOwner.languageCode.startsWith('en') ? 'en' : 'ru',
+    leadNotificationsEnabled: true,
+  })
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [saveError, setSaveError] = useState<SaveError | null>(null)
   const [leads, setLeads] = useState<LeadRecord[]>(clientEnv.demoMode ? demoLeads : [])
@@ -68,6 +89,8 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
       setOwner(auth.bootstrap.dashboard.owner)
       setStats(auth.bootstrap.dashboard.stats)
       setLeads(auth.bootstrap.dashboard.leads)
+      setPreferencesState(auth.bootstrap.preferences)
+      void changeLocale(auth.bootstrap.preferences.locale)
     }
     return () => {
       active = false
@@ -95,6 +118,7 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
     if (savingPromise.current) return savingPromise.current
     const run = async () => {
       while (pendingSave.current) {
+        if (saveTimer.current) window.clearTimeout(saveTimer.current)
         pendingSave.current = false
         const snapshot = cardRef.current
         if (!snapshot) return
@@ -117,7 +141,11 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
           setSaveError(
             error instanceof ApiError
               ? { message: error.message, requestId: error.payload.requestId }
-              : { message: 'Не удалось сохранить изменения' },
+              : {
+                  message: i18n.language.startsWith('en')
+                    ? 'Could not save changes'
+                    : 'Не удалось сохранить изменения',
+                },
           )
           break
         }
@@ -168,6 +196,7 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
       owner: owner!,
       stats: stats!,
       leads,
+      preferences,
       saveStatus,
       saveError,
       online,
@@ -186,12 +215,34 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
         setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status } : lead)))
         if (!clientEnv.demoMode) void saveLeadStatus(id, status)
       },
+      setPreferences: async (patch) => {
+        const previous = preferences
+        const next = { ...previous, ...patch }
+        setPreferencesState(next)
+        try {
+          if (!clientEnv.demoMode) setPreferencesState(await saveOwnerPreferences(patch))
+        } catch (error) {
+          setPreferencesState(previous)
+          throw error
+        }
+      },
+      refreshDashboard: async () => {
+        if (clientEnv.demoMode) return
+        const dashboard = await loadOwnerDashboard()
+        setOwner(dashboard.owner)
+        setStats(dashboard.stats)
+        setLeads(dashboard.leads)
+      },
     }),
-    [card, leads, online, owner, saveError, saveNow, saveStatus, stats, updateCard],
+    [card, leads, online, owner, preferences, saveError, saveNow, saveStatus, stats, updateCard],
   )
 
   if (auth.status === 'authenticated' && !ready)
-    return <div className="app-shell grid min-h-[100dvh] place-items-center">Загружаем Cardly…</div>
+    return (
+      <div className="app-shell grid min-h-[100dvh] place-items-center" role="status">
+        {i18n.language.startsWith('en') ? 'Loading Cardly…' : 'Загружаем Cardly…'}
+      </div>
+    )
   return <CardStoreContext.Provider value={value}>{children}</CardStoreContext.Provider>
 }
 

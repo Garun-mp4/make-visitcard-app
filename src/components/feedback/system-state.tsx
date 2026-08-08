@@ -2,6 +2,7 @@ import { AlertTriangle, CloudOff, LockKeyhole, RefreshCw } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function SystemState({
   title,
@@ -37,21 +38,34 @@ export function SystemState({
   )
 }
 
-export const OfflineState = ({ onRetry }: { onRetry: () => void }) => (
-  <SystemState
-    title="Нет подключения"
-    description="Черновик сохранён на устройстве. Проверьте сеть и повторите."
-    actionLabel="Повторить"
-    onAction={onRetry}
-    icon={<CloudOff aria-hidden="true" />}
-  />
-)
-export const UnauthorizedState = ({ onAction }: { onAction: () => void }) => (
-  <SystemState
-    title="Откройте в Telegram"
-    description="Управление визиткой доступно после безопасной авторизации через Telegram."
-    actionLabel="Открыть бота"
-    onAction={onAction}
-    icon={<LockKeyhole aria-hidden="true" />}
-  />
-)
+export function OfflineState({ onRetry }: { onRetry: () => void }) {
+  const l = useLocaleText()
+  return (
+    <SystemState
+      title={l('Нет подключения', 'No connection')}
+      description={l(
+        'Черновик сохранён на устройстве. Проверьте сеть и повторите.',
+        'Your draft is saved on this device. Check the connection and retry.',
+      )}
+      actionLabel={l('Повторить', 'Retry')}
+      onAction={onRetry}
+      icon={<CloudOff aria-hidden="true" />}
+    />
+  )
+}
+
+export function UnauthorizedState({ onAction }: { onAction: () => void }) {
+  const l = useLocaleText()
+  return (
+    <SystemState
+      title={l('Откройте в Telegram', 'Open in Telegram')}
+      description={l(
+        'Управление визиткой доступно после безопасной авторизации через Telegram.',
+        'Card management is available after secure Telegram authentication.',
+      )}
+      actionLabel={l('Открыть бота', 'Open bot')}
+      onAction={onAction}
+      icon={<LockKeyhole aria-hidden="true" />}
+    />
+  )
+}

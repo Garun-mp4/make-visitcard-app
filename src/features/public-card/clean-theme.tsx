@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button'
 import { PublicActions } from '@/features/public-card/public-actions'
 import { ProjectCover, ServicePrice } from '@/features/public-card/theme-shared'
 import { telegram } from '@/lib/telegram'
+import { accentStyle } from '@/lib/accent-preset'
+import { useTranslation } from 'react-i18next'
+import { recordPublicEvent } from '@/services/public-analytics'
+import { PublicLinks } from '@/features/public-card/public-links'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function CleanTheme({
   card,
@@ -16,6 +21,8 @@ export function CleanTheme({
   onProject: (project: Project) => void
   onLead: () => void
 }) {
+  const { t } = useTranslation()
+  const l = useLocaleText()
   const skills = card.skills.slice().sort((a, b) => a.position - b.position)
   const services = card.services
     .filter((item) => item.enabled)
@@ -24,14 +31,17 @@ export function CleanTheme({
     .filter((item) => item.enabled)
     .sort((a, b) => a.position - b.position)
   return (
-    <div className="min-h-[100dvh] bg-[#fafbf8] text-[#171916] [--accent:#1f6b4f] [--accent-hover:#17563f] [--accent-soft:#e0eee7] [--surface:#fff] [--border:#dfe3dd] [--text-primary:#171916] [--text-secondary:#5d645b] [--text-muted:#7a8176]">
+    <div
+      style={accentStyle(card.appearance.accentPreset)}
+      className="min-h-[100dvh] bg-[#fafbf8] text-[#171916] [--surface:#fff] [--border:#dfe3dd] [--text-primary:#171916] [--text-secondary:#5d645b] [--text-muted:#7a8176]"
+    >
       <header className="mx-auto flex min-h-20 max-w-[1240px] items-center justify-between border-b border-[#e8ebe6] px-5 lg:px-10">
         <div className="heading-font text-sm">cardly / {card.profile.displayName}</div>
         <nav className="hidden gap-8 text-xs text-[#555b52] md:flex">
-          <a href="#skills">Навыки</a>
-          <a href="#services">Услуги</a>
-          <a href="#projects">Проекты</a>
-          <a href="#contacts">Контакты</a>
+          <a href="#skills">{t('publicCard.skills')}</a>
+          <a href="#services">{t('publicCard.services')}</a>
+          <a href="#projects">{t('publicCard.projects')}</a>
+          <a href="#contacts">{t('publicCard.contacts')}</a>
         </nav>
         <PublicActions card={card} />
       </header>
@@ -62,7 +72,12 @@ export function CleanTheme({
               {card.profile.bio}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button onClick={() => telegram.openLink(card.primaryAction.value)}>
+              <Button
+                onClick={() => {
+                  recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                  telegram.openLink(card.primaryAction.value)
+                }}
+              >
                 {card.primaryAction.label}
               </Button>
               {projects.length > 0 ? (
@@ -72,7 +87,7 @@ export function CleanTheme({
                     document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })
                   }
                 >
-                  Смотреть проекты
+                  {l('Смотреть проекты', 'View projects')}
                 </Button>
               ) : null}
             </div>
@@ -93,7 +108,7 @@ export function CleanTheme({
         <section id="skills" className="mt-20 grid gap-5 lg:grid-cols-[1.2fr_2.8fr]">
           {card.appearance.showSkills ? (
             <div className="rounded-2xl bg-[#eef3ef] p-6">
-              <h2 className="heading-font m-0 text-2xl">Навыки</h2>
+              <h2 className="heading-font m-0 text-2xl">{t('publicCard.skills')}</h2>
               <div className="mt-5 grid gap-2 text-sm text-[#596157]">
                 {skills.map((skill) => (
                   <span key={skill.id}>{skill.label}</span>
@@ -120,7 +135,7 @@ export function CleanTheme({
         </section>
         {card.appearance.showProjects && projects.length > 0 ? (
           <section id="projects" className="mt-12">
-            <h2 className="heading-font text-3xl">Избранные проекты</h2>
+            <h2 className="heading-font text-3xl">{l('Избранные проекты', 'Featured projects')}</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {projects.map((project, index) => (
                 <button
@@ -150,14 +165,13 @@ export function CleanTheme({
             className="mt-16 grid gap-6 rounded-3xl border border-[#dfe3dd] bg-white p-6 lg:grid-cols-[1fr_auto] lg:items-center"
           >
             <div>
-              <h2 className="heading-font m-0 text-3xl">Есть задача?</h2>
-              <p className="mb-0 text-[#596157]">
-                Оставьте короткую заявку — форма займёт меньше минуты.
-              </p>
+              <h2 className="heading-font m-0 text-3xl">{t('publicCard.discuss')}</h2>
+              <p className="mb-0 text-[#596157]">{t('publicCard.discussDescription')}</p>
             </div>
-            <Button onClick={onLead}>Написать</Button>
+            <Button onClick={onLead}>{t('publicCard.write')}</Button>
           </section>
         ) : null}
+        <PublicLinks card={card} className="mt-6" />
       </main>
     </div>
   )

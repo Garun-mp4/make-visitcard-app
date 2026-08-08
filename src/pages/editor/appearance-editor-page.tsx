@@ -4,6 +4,8 @@ import type { Appearance } from '@shared/types'
 import { useCardStore } from '@/app/card-store'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { cn } from '@/lib/utils'
+import { accentOptions } from '@/lib/accent-preset'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 const themes: Array<{
   id: Appearance['themeId']
@@ -32,6 +34,7 @@ const themes: Array<{
 ]
 
 export default function AppearanceEditorPage() {
+  const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const appearance = card.appearance
   const toggle = (
@@ -50,10 +53,15 @@ export default function AppearanceEditorPage() {
       appearance: { ...current.appearance, [field]: !current.appearance[field] },
     }))
   return (
-    <EditorShell title="Оформление">
+    <EditorShell title={l('Оформление', 'Appearance')}>
       <div>
-        <h2 className="heading-font m-0 text-lg">Характер визитки</h2>
-        <p className="helper-text mt-1">Тему можно изменить после публикации.</p>
+        <h2 className="heading-font m-0 text-lg">{l('Характер визитки', 'Card style')}</h2>
+        <p className="helper-text mt-1">
+          {l(
+            'Тему можно изменить после публикации.',
+            'You can change the theme after publication.',
+          )}
+        </p>
       </div>
       <div className="grid grid-cols-3 gap-2">
         {themes.map((theme) => (
@@ -85,14 +93,47 @@ export default function AppearanceEditorPage() {
         ))}
       </div>
       <section className="stack-12">
-        <h2 className="heading-font m-0 text-lg">Показывать разделы</h2>
+        <div>
+          <h2 className="heading-font m-0 text-lg">{l('Акцент', 'Accent')}</h2>
+          <p className="helper-text mt-1">
+            {l(
+              'Основной цвет кнопок, ссылок и выделений.',
+              'The main color for buttons, links, and highlights.',
+            )}
+          </p>
+        </div>
+        <div
+          className="flex flex-wrap gap-3"
+          role="group"
+          aria-label={l('Цвет акцента', 'Accent color')}
+        >
+          {accentOptions.map((option) => (
+            <button
+              key={option.id}
+              aria-label={`${l('Акцент', 'Accent')} ${option.id}`}
+              aria-pressed={appearance.accentPreset === option.id}
+              className={`grid size-11 place-items-center rounded-full border ${appearance.accentPreset === option.id ? 'border-[var(--text-primary)] ring-2 ring-[var(--accent-soft)]' : 'border-[var(--border)]'}`}
+              onClick={() =>
+                updateCard((current) => ({
+                  ...current,
+                  appearance: { ...current.appearance, accentPreset: option.id },
+                }))
+              }
+            >
+              <span className="size-7 rounded-full" style={{ backgroundColor: option.color }} />
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="stack-12">
+        <h2 className="heading-font m-0 text-lg">{l('Показывать разделы', 'Visible sections')}</h2>
         {[
-          ['showLocation', 'Город'],
-          ['showAvailability', 'Доступность'],
-          ['showSkills', 'Навыки'],
-          ['showServices', 'Услуги'],
-          ['showProjects', 'Проекты'],
-          ['showContactForm', 'Форма заявки'],
+          ['showLocation', l('Город', 'City')],
+          ['showAvailability', l('Доступность', 'Availability')],
+          ['showSkills', l('Навыки', 'Skills')],
+          ['showServices', l('Услуги', 'Services')],
+          ['showProjects', l('Проекты', 'Projects')],
+          ['showContactForm', l('Форма заявки', 'Lead form')],
         ].map(([field, label]) => (
           <label
             key={field}

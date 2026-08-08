@@ -9,6 +9,7 @@ import { CardStoreProvider } from '@/app/card-store'
 import { App } from '@/app/app'
 import { ErrorBoundary } from '@/components/feedback/error-boundary'
 import { AuthProvider } from '@/features/auth/auth-provider'
+import { FeedbackProvider } from '@/components/feedback/feedback-provider'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,9 +24,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <AuthProvider>
-            <CardStoreProvider>
-              <App />
-            </CardStoreProvider>
+            <FeedbackProvider>
+              <CardStoreProvider>
+                <App />
+              </CardStoreProvider>
+            </FeedbackProvider>
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

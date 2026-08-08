@@ -7,6 +7,7 @@ import {
   analyticsEventSchema,
   cardDraftSchema,
   leadSchema,
+  ownerPreferencesPatchSchema,
   slugSchema,
 } from '../../shared/schemas.js'
 import { requireSession } from '../auth/session.js'
@@ -19,6 +20,8 @@ import {
   getCard,
   getOrCreateCard,
   getOwnerDashboard,
+  getOwnerPreferences,
+  getOwnerStats,
   getPublicCard,
   isSlugAvailable,
   publishCard,
@@ -26,6 +29,7 @@ import {
   saveCard,
   unpublishCard,
   updateLeadStatus,
+  updateOwnerPreferences,
   upsertTelegramUser,
 } from '../db/repository.js'
 import { enforceRateLimit } from '../rate-limit/database-rate-limit.js'
@@ -70,9 +74,10 @@ export function registerRoutes(router: Router) {
       const user = await upsertTelegramUser(result.user)
       const card = await getOrCreateCard(user)
       const dashboard = await getOwnerDashboard(user.uid)
+      const preferences = await getOwnerPreferences(user.uid)
       const token = createSessionToken(user.uid)
       res.setHeader('Set-Cookie', sessionCookie(token, env.APP_ENV === 'production'))
-      res.json({ user, sessionToken: token, card, dashboard })
+      res.json({ user, sessionToken: token, card, dashboard, preferences })
     }),
   )
 
@@ -81,6 +86,24 @@ export function registerRoutes(router: Router) {
     requireSessionAuth,
     route(async (req, res) => {
       res.json({ card: await getCard(req.auth!.uid) })
+    }),
+  )
+
+  router.patch(
+    '/api/owner/preferences',
+    requireSessionAuth,
+    route(async (req, res) => {
+      const patch = ownerPreferencesPatchSchema.parse(req.body)
+      res.json({ preferences: await updateOwnerPreferences(req.auth!.uid, patch) })
+    }),
+  )
+
+  router.get(
+    '/api/owner/stats',
+    requireSessionAuth,
+    route(async (req, res) => {
+      const period = z.enum(['7', '30', 'all']).parse(req.query.period ?? '7')
+      res.json({ stats: await getOwnerStats(req.auth!.uid, period) })
     }),
   )
 
@@ -172,6 +195,10 @@ export function registerRoutes(router: Router) {
       if (input.website) throw new AppError(400, 'spam_detected', 'Не удалось отправить заявку')
       const lead = await createLead(slug, input)
       try {
+        if (!lead.notifyOwner) {
+          res.status(201).json({ ok: true, leadId: lead.id })
+          return
+        }
         await notifyLeadOwner({
           telegramId: lead.telegramId,
           slug,

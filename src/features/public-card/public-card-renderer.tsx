@@ -6,12 +6,22 @@ import { DarkTheme } from '@/features/public-card/dark-theme'
 import { EditorialTheme } from '@/features/public-card/editorial-theme'
 import { LeadForm } from '@/features/public-card/lead-form'
 import { ProjectDialog } from '@/features/public-card/project-dialog'
+import { useTranslation } from 'react-i18next'
+import { recordPublicEvent } from '@/services/public-analytics'
 
 export function PublicCardRenderer({ card }: { card: CardView }) {
+  const { t } = useTranslation()
   const [project, setProject] = useState<Project | null>(null)
   const [leadOpen, setLeadOpen] = useState(false)
   const closeProject = useCallback(() => setProject(null), [])
-  const common = { card, onProject: setProject, onLead: () => setLeadOpen(true) }
+  const common = {
+    card,
+    onProject: (value: Project) => {
+      recordPublicEvent(card.publication.slug, 'project_open')
+      setProject(value)
+    },
+    onLead: () => setLeadOpen(true),
+  }
   return (
     <div className="contents" data-public-theme={card.appearance.themeId}>
       {card.appearance.themeId === 'dark' ? (
@@ -33,9 +43,9 @@ export function PublicCardRenderer({ card }: { card: CardView }) {
               onClick={() => setLeadOpen(false)}
               className="mb-4 ml-auto block text-sm text-[var(--text-muted)]"
             >
-              Закрыть
+              {t('publicCard.close')}
             </button>
-            <LeadForm slug={card.publication.slug} />
+            <LeadForm slug={card.publication.slug} ownerName={card.profile.displayName} />
           </>
         ) : null}
       </dialog>

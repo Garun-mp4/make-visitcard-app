@@ -10,16 +10,20 @@ import { Field, TextareaField } from '@/components/ui/field'
 import { apiRequest } from '@/services/api-client'
 import { clientEnv } from '@/config/client-env'
 import { slugSchema } from '@shared/schemas'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 const totalSteps = 6
 
 export default function OnboardingPage() {
+  const l = useLocaleText()
   const navigate = useNavigate()
   const { card, owner, updateCard } = useCardStore()
   const [step, setStep] = useState(() =>
     Number(sessionStorage.getItem('cardly-onboarding-step') ?? 0),
   )
-  const [slugState, setSlugState] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle')
+  const [slugState, setSlugState] = useState<'idle' | 'checking' | 'available' | 'unavailable'>(
+    'idle',
+  )
   useEffect(() => sessionStorage.setItem('cardly-onboarding-step', String(step)), [step])
   const next = () => setStep((current) => Math.min(totalSteps - 1, current + 1))
   const back = () => setStep((current) => Math.max(0, current - 1))
@@ -69,15 +73,20 @@ export default function OnboardingPage() {
     <main className="app-shell mx-auto flex min-h-[100dvh] w-full max-w-[430px] flex-col px-5 pb-[max(20px,var(--tg-safe-bottom))]">
       <header className="flex min-h-20 items-center justify-between">
         <button
-          aria-label="Назад"
+          aria-label={l('Назад', 'Back')}
           className={`grid size-11 place-items-center ${step === 0 ? 'invisible' : ''}`}
           onClick={back}
         >
           <ArrowLeft size={20} />
         </button>
-        <span className="text-xs text-[var(--text-muted)]">Черновик сохранён</span>
+        <span className="text-xs text-[var(--text-muted)]">
+          {l('Черновик сохранён', 'Draft saved')}
+        </span>
       </header>
-      <div className="grid grid-cols-6 gap-1.5" aria-label={`Шаг ${step + 1} из ${totalSteps}`}>
+      <div
+        className="grid grid-cols-6 gap-1.5"
+        aria-label={l(`Шаг ${step + 1} из ${totalSteps}`, `Step ${step + 1} of ${totalSteps}`)}
+      >
         {Array.from({ length: totalSteps }, (_, index) => (
           <span
             key={index}
@@ -92,10 +101,14 @@ export default function OnboardingPage() {
               <Sparkles size={34} />
             </div>
             <div>
-              <h1 className="page-title text-3xl">Визитка, которая работает за вас</h1>
+              <h1 className="page-title text-3xl">
+                {l('Визитка, которая работает за вас', 'A card that works for you')}
+              </h1>
               <p className="mt-4 leading-relaxed text-[var(--text-secondary)]">
-                Импортируем профиль Telegram и за несколько коротких шагов соберём профессиональную
-                страницу.
+                {l(
+                  'Импортируем профиль Telegram и за несколько коротких шагов соберём профессиональную страницу.',
+                  'We import your Telegram profile and build a professional page in a few short steps.',
+                )}
               </p>
             </div>
             <div className="surface flex w-full items-center gap-3 rounded-2xl p-4">
@@ -113,13 +126,16 @@ export default function OnboardingPage() {
         {step === 1 ? (
           <div className="stack-16">
             <div>
-              <h1 className="page-title">Расскажите о себе</h1>
+              <h1 className="page-title">{l('Расскажите о себе', 'Tell us about yourself')}</h1>
               <p className="text-sm leading-relaxed text-[var(--text-secondary)]">
-                Коротко и по делу — посетитель должен сразу понять вашу специализацию.
+                {l(
+                  'Коротко и по делу — посетитель должен сразу понять вашу специализацию.',
+                  'Keep it concise — visitors should immediately understand your expertise.',
+                )}
               </p>
             </div>
             <Field
-              label="Имя"
+              label={l('Имя', 'Name')}
               value={card.profile.displayName}
               onChange={(event) =>
                 updateCard((current) => ({
@@ -129,7 +145,7 @@ export default function OnboardingPage() {
               }
             />
             <Field
-              label="Профессия"
+              label={l('Профессия', 'Profession')}
               value={card.profile.profession}
               onChange={(event) =>
                 updateCard((current) => ({
@@ -139,7 +155,7 @@ export default function OnboardingPage() {
               }
             />
             <TextareaField
-              label="О себе"
+              label={l('О себе', 'About')}
               value={card.profile.bio}
               onChange={(event) =>
                 updateCard((current) => ({
@@ -149,7 +165,7 @@ export default function OnboardingPage() {
               }
             />
             <Field
-              label="Город"
+              label={l('Город', 'City')}
               value={card.profile.location}
               onChange={(event) =>
                 updateCard((current) => ({
@@ -163,13 +179,16 @@ export default function OnboardingPage() {
         {step === 2 ? (
           <div className="stack-20">
             <div>
-              <h1 className="page-title">Главное действие</h1>
+              <h1 className="page-title">{l('Главное действие', 'Primary action')}</h1>
               <p className="text-sm text-[var(--text-secondary)]">
-                Что посетитель должен сделать после знакомства?
+                {l(
+                  'Что посетитель должен сделать после знакомства?',
+                  'What should a visitor do after learning about you?',
+                )}
               </p>
             </div>
             <Field
-              label="Текст кнопки"
+              label={l('Текст кнопки', 'Button label')}
               value={card.primaryAction.label}
               onChange={(event) =>
                 updateCard((current) => ({
@@ -179,17 +198,23 @@ export default function OnboardingPage() {
               }
             />
             <Field
-              label="Ссылка или контакт"
+              label={l('Ссылка или контакт', 'Link or contact')}
               value={card.primaryAction.value}
               onChange={(event) =>
                 updateCard((current) => ({
                   ...current,
-                  primaryAction: { ...current.primaryAction, value: event.target.value },
+                  primaryAction: {
+                    ...current.primaryAction,
+                    value: event.target.value,
+                    enabled: Boolean(event.target.value.trim()),
+                  },
                 }))
               }
             />
             <div className="surface rounded-2xl p-5">
-              <p className="mb-3 text-xs text-[var(--text-muted)]">Предпросмотр</p>
+              <p className="mb-3 text-xs text-[var(--text-muted)]">
+                {l('Предпросмотр', 'Preview')}
+              </p>
               <Button fullWidth>
                 <Send size={17} />
                 {card.primaryAction.label}
@@ -200,9 +225,12 @@ export default function OnboardingPage() {
         {step === 3 ? (
           <div className="stack-20">
             <div>
-              <h1 className="page-title">Навыки и контакты</h1>
+              <h1 className="page-title">{l('Навыки и контакты', 'Skills and contacts')}</h1>
               <p className="text-sm text-[var(--text-secondary)]">
-                Мы уже добавили данные из примера — их можно изменить после запуска.
+                {l(
+                  'Проверьте импортированный Telegram-контакт. Остальное можно добавить в редакторе.',
+                  'Review the imported Telegram contact. You can add everything else in the editor.',
+                )}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -216,9 +244,12 @@ export default function OnboardingPage() {
               ))}
             </div>
             <div className="surface rounded-2xl p-4">
-              <strong className="text-sm">Публичные ссылки</strong>
+              <strong className="text-sm">{l('Публичные ссылки', 'Public links')}</strong>
               <p className="mb-0 text-xs text-[var(--text-muted)]">
-                {card.links.filter((link) => link.public).length} контакта будут видны посетителям.
+                {l(
+                  `${card.links.filter((link) => link.public).length} контакта будут видны посетителям.`,
+                  `${card.links.filter((link) => link.public).length} contacts will be visible to visitors.`,
+                )}
               </p>
             </div>
           </div>
@@ -226,9 +257,14 @@ export default function OnboardingPage() {
         {step === 4 ? (
           <div className="stack-20">
             <div>
-              <h1 className="page-title">Выберите характер визитки</h1>
+              <h1 className="page-title">
+                {l('Выберите характер визитки', 'Choose your card style')}
+              </h1>
               <p className="text-sm text-[var(--text-secondary)]">
-                Тему и акцент можно изменить после публикации.
+                {l(
+                  'Тему и акцент можно изменить после публикации.',
+                  'You can change the theme and accent after publication.',
+                )}
               </p>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -253,13 +289,15 @@ export default function OnboardingPage() {
         {step === 5 ? (
           <div className="stack-20">
             <div>
-              <h1 className="page-title">Последний шаг — адрес визитки</h1>
+              <h1 className="page-title">
+                {l('Последний шаг — адрес визитки', 'Final step — card address')}
+              </h1>
               <p className="text-sm text-[var(--text-secondary)]">
-                Выберите короткий уникальный адрес.
+                {l('Выберите короткий уникальный адрес.', 'Choose a short, unique address.')}
               </p>
             </div>
             <label className="field-group">
-              <span className="field-label">Адрес</span>
+              <span className="field-label">{l('Адрес', 'Address')}</span>
               <div className="field-control flex gap-1">
                 <span className="text-[var(--text-muted)]">cardly.me/</span>
                 <input
@@ -276,14 +314,16 @@ export default function OnboardingPage() {
                   }
                 />
               </div>
-              <span className={`helper-text ${slugState === 'available' ? '!text-[var(--success)]' : slugState === 'unavailable' ? '!text-[var(--error)]' : ''}`}>
+              <span
+                className={`helper-text ${slugState === 'available' ? '!text-[var(--success)]' : slugState === 'unavailable' ? '!text-[var(--error)]' : ''}`}
+              >
                 {slugState === 'checking'
-                  ? 'Проверяем адрес…'
+                  ? l('Проверяем адрес…', 'Checking address…')
                   : slugState === 'available'
-                    ? 'Адрес свободен'
+                    ? l('Адрес свободен', 'Address is available')
                     : slugState === 'unavailable'
-                      ? 'Адрес уже занят'
-                      : 'Введите 3–30 латинских символов'}
+                      ? l('Адрес уже занят', 'Address is taken')
+                      : l('Введите 3–30 латинских символов', 'Enter 3–30 Latin characters')}
               </span>
             </label>
             <div className="surface flex items-center gap-3 rounded-2xl p-4">
@@ -297,7 +337,11 @@ export default function OnboardingPage() {
         ) : null}
       </section>
       <Button fullWidth disabled={!canContinue} onClick={step === totalSteps - 1 ? finish : next}>
-        {step === totalSteps - 1 ? 'Создать черновик' : step === 0 ? 'Начать' : 'Продолжить'}
+        {step === totalSteps - 1
+          ? l('Создать черновик', 'Create draft')
+          : step === 0
+            ? l('Начать', 'Start')
+            : l('Продолжить', 'Continue')}
         <ArrowRight size={17} />
       </Button>
     </main>

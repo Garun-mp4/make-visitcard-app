@@ -50,6 +50,11 @@ export interface OwnerProfile {
   platform: string
 }
 
+export interface OwnerPreferences {
+  locale: 'ru' | 'en'
+  leadNotificationsEnabled: boolean
+}
+
 export interface LeadRecord extends Omit<LeadInput, 'website'> {
   id: string
   ownerUid: string
@@ -72,4 +77,23 @@ export interface CardStats {
   totalShares: number
   daily: DailyMetric[]
   popularActions: Array<{ label: string; value: number }>
+}
+
+export type StatsPeriod = '7' | '30' | 'all'
+
+export interface PeriodStats {
+  period: StatsPeriod
+  range: { from: string | null; to: string | null }
+  totals: {
+    views: number
+    primaryClicks: number
+    linkClicks: number
+    projectOpens: number
+    leads: number
+    shares: number
+  }
+  deltas: { views: number | null; primaryClicks: number | null; leads: number | null }
+  series: Array<{ label: string; views: number }>
+  averageViews: number
+  popularActions: Array<{ label: 'primary' | 'links' | 'projects' | 'share'; value: number }>
 }

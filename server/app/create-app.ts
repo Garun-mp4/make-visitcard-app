@@ -13,6 +13,8 @@ const knownPaths = [
   '/api/cards/publish',
   '/api/cards/unpublish',
   '/api/owner/dashboard',
+  '/api/owner/preferences',
+  '/api/owner/stats',
   '/api/slugs/check',
   '/api/images/upload',
   '/api/images/delete',

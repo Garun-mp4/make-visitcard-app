@@ -7,10 +7,17 @@ import {
   useState,
 } from 'react'
 
-import type { CardDraft, CardStats, LeadRecord, OwnerProfile } from '@shared/types'
+import type {
+  CardDraft,
+  CardStats,
+  LeadRecord,
+  OwnerPreferences,
+  OwnerProfile,
+} from '@shared/types'
 import { clientEnv } from '@/config/client-env'
 import { telegram } from '@/lib/telegram'
 import { apiRequest, setApiSessionToken } from '@/services/api-client'
+import { prefetchOwnerRoutes } from '@/routes/prefetch'
 
 type AuthStatus = 'demo' | 'browser' | 'loading' | 'authenticated' | 'error'
 
@@ -21,6 +28,7 @@ interface AuthContextValue {
   bootstrap: {
     card: CardDraft
     dashboard: { owner: OwnerProfile; stats: CardStats; leads: LeadRecord[] }
+    preferences: OwnerPreferences
   } | null
   retry(): void
 }
@@ -41,6 +49,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     let active = true
 
     const authenticate = async () => {
+      performance.mark('cardly-auth-start')
       setStatus('loading')
       setError(null)
       try {
@@ -49,18 +58,27 @@ export function AuthProvider({ children }: PropsWithChildren) {
           sessionToken: string
           card: CardDraft
           dashboard: { owner: OwnerProfile; stats: CardStats; leads: LeadRecord[] }
-        }>(
-          '/api/auth/telegram',
-          {
-            method: 'POST',
-            body: JSON.stringify({ initData: telegram.initData }),
-          },
-        )
+          preferences: OwnerPreferences
+        }>('/api/auth/telegram', {
+          method: 'POST',
+          body: JSON.stringify({ initData: telegram.initData }),
+        })
         if (active) {
           setApiSessionToken(result.sessionToken)
           setUser(result.user)
-          setBootstrap({ card: result.card, dashboard: result.dashboard })
+          setBootstrap({
+            card: result.card,
+            dashboard: result.dashboard,
+            preferences: result.preferences,
+          })
           setStatus('authenticated')
+          performance.mark('cardly-bootstrap-ready')
+          performance.measure(
+            'cardly-auth-bootstrap',
+            'cardly-auth-start',
+            'cardly-bootstrap-ready',
+          )
+          prefetchOwnerRoutes()
         }
       } catch (reason) {
         if (active) {

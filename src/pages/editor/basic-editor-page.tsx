@@ -5,10 +5,12 @@ import { useCardStore } from '@/app/card-store'
 import { Button } from '@/components/ui/button'
 import { Field, TextareaField } from '@/components/ui/field'
 import { EditorShell } from '@/features/editor/editor-shell'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 export default function BasicEditorPage() {
+  const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploadError, setUploadError] = useState('')
@@ -18,7 +20,7 @@ export default function BasicEditorPage() {
   const upload = (file: File | undefined) => {
     if (!file) return
     if (!allowedTypes.has(file.type) || file.size > 5 * 1024 * 1024) {
-      setUploadError('JPEG, PNG или WebP до 5 МБ')
+      setUploadError(l('JPEG, PNG или WebP до 5 МБ', 'JPEG, PNG or WebP up to 5 MB'))
       return
     }
     const reader = new FileReader()
@@ -29,7 +31,7 @@ export default function BasicEditorPage() {
     reader.readAsDataURL(file)
   }
   return (
-    <EditorShell title="Основное">
+    <EditorShell title={l('Основное', 'Basic')}>
       <div>
         <input
           ref={inputRef}
@@ -45,40 +47,40 @@ export default function BasicEditorPage() {
           onClick={() => inputRef.current?.click()}
         >
           <Upload size={22} />
-          Загрузить фото
+          {l('Загрузить фото', 'Upload photo')}
         </Button>
         {uploadError ? (
           <p className="error-text mt-2">{uploadError}</p>
         ) : (
-          <p className="helper-text mt-2">PNG или JPG до 5 МБ</p>
+          <p className="helper-text mt-2">{l('PNG или JPG до 5 МБ', 'PNG or JPG up to 5 MB')}</p>
         )}
       </div>
       <Field
-        label="Имя"
+        label={l('Имя', 'Name')}
         value={profile.displayName}
         maxLength={60}
         onChange={(event) => update('displayName', event.target.value)}
       />
       <Field
-        label="Профессия"
+        label={l('Профессия', 'Profession')}
         value={profile.profession}
         maxLength={80}
         onChange={(event) => update('profession', event.target.value)}
       />
       <TextareaField
-        label="О себе"
+        label={l('О себе', 'About')}
         value={profile.bio}
         maxLength={300}
         onChange={(event) => update('bio', event.target.value)}
       />
       <Field
-        label="Город"
+        label={l('Город', 'City')}
         value={profile.location}
         maxLength={80}
         onChange={(event) => update('location', event.target.value)}
       />
       <label className="field-group">
-        <span className="field-label">Формат работы</span>
+        <span className="field-label">{l('Формат работы', 'Work format')}</span>
         <select
           className="field-control"
           value={profile.workFormat}
@@ -92,10 +94,10 @@ export default function BasicEditorPage() {
             }))
           }
         >
-          <option value="remote">Удалённо</option>
-          <option value="hybrid">Удалённо · гибрид</option>
-          <option value="office">В офисе</option>
-          <option value="flexible">Гибкий формат</option>
+          <option value="remote">{l('Удалённо', 'Remote')}</option>
+          <option value="hybrid">{l('Удалённо · гибрид', 'Remote · hybrid')}</option>
+          <option value="office">{l('В офисе', 'Office')}</option>
+          <option value="flexible">{l('Гибкий формат', 'Flexible')}</option>
         </select>
       </label>
     </EditorShell>

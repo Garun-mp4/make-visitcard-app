@@ -79,6 +79,8 @@ export async function ensureDatabaseSchema(): Promise<void> {
       )`,
       sql`CREATE INDEX IF NOT EXISTS cardly_leads_owner_created_idx
         ON cardly_leads(owner_uid, created_at DESC)`,
+      sql`ALTER TABLE cardly_users ADD COLUMN IF NOT EXISTS preferred_locale TEXT`,
+      sql`ALTER TABLE cardly_users ADD COLUMN IF NOT EXISTS lead_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE`,
     ])
   })().catch((error) => {
     schemaPromise = null

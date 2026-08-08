@@ -6,8 +6,10 @@ import { EditorShell } from '@/features/editor/editor-shell'
 import { moveItem } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
 import { useState } from 'react'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function ServicesEditorPage() {
+  const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const add = () => {
@@ -31,15 +33,15 @@ export default function ServicesEditorPage() {
     }))
   }
   return (
-    <EditorShell title="Услуги">
+    <EditorShell title={l('Услуги', 'Services')}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="heading-font m-0 text-lg">Ваши услуги</h2>
+          <h2 className="heading-font m-0 text-lg">{l('Ваши услуги', 'Your services')}</h2>
           <p className="helper-text">{card.services.length} из 6</p>
         </div>
         <Button variant="secondary" onClick={add} disabled={card.services.length >= 6}>
           <Plus size={17} />
-          Добавить
+          {l('Добавить', 'Add')}
         </Button>
       </div>
       {card.services.map((service, index) => (
@@ -49,7 +51,7 @@ export default function ServicesEditorPage() {
               aria-label="Название услуги"
               className="field-control min-h-11 flex-1 font-semibold"
               value={service.title}
-              placeholder="Название услуги"
+              placeholder={l('Название услуги', 'Service name')}
               onChange={(event) =>
                 updateCard((current) => ({
                   ...current,
@@ -72,14 +74,17 @@ export default function ServicesEditorPage() {
                   }))
                 }
               />
-              Показывать
+              {l('Показывать', 'Show')}
             </label>
           </div>
           <textarea
             aria-label="Описание услуги"
             className="field-control"
             value={service.description}
-            placeholder="Коротко опишите результат для клиента"
+            placeholder={l(
+              'Коротко опишите результат для клиента',
+              'Briefly describe the outcome for the client',
+            )}
             onChange={(event) =>
               updateCard((current) => ({
                 ...current,
@@ -89,6 +94,9 @@ export default function ServicesEditorPage() {
               }))
             }
           />
+          {!service.title.trim() ? (
+            <p className="error-text m-0">{l('Укажите название услуги', 'Enter a service name')}</p>
+          ) : null}
           <div className="flex justify-end gap-1">
             <button
               aria-label="Выше"
@@ -128,8 +136,13 @@ export default function ServicesEditorPage() {
       ))}
       <ConfirmDialog
         open={Boolean(pendingDelete)}
-        title="Удалить услугу?"
-        description="Услуга исчезнет из редактора и публичной визитки."
+        title={l('Удалить услугу?', 'Delete service?')}
+        description={l(
+          'Услуга исчезнет из редактора и публичной визитки.',
+          'The service will be removed from the editor and public card.',
+        )}
+        confirmLabel={l('Удалить', 'Delete')}
+        cancelLabel={l('Отмена', 'Cancel')}
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
           updateCard((current) => ({

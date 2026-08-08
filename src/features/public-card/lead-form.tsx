@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckCircle2, Send } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 
 import { leadSchema } from '@shared/schemas'
 import type { LeadInput } from '@shared/types'
@@ -10,8 +11,12 @@ import { Field, TextareaField } from '@/components/ui/field'
 import { clientEnv } from '@/config/client-env'
 import { apiRequest, ApiError } from '@/services/api-client'
 import { telegram } from '@/lib/telegram'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
-export function LeadForm({ slug }: { slug: string }) {
+export function LeadForm({ slug, ownerName }: { slug: string; ownerName: string }) {
+  const recipientName = ownerName.trim().split(/\s+/)[0] || ownerName
+  const { t } = useTranslation()
+  const l = useLocaleText()
   const [success, setSuccess] = useState(false)
   const [serverError, setServerError] = useState('')
   const {
@@ -33,7 +38,12 @@ export function LeadForm({ slug }: { slug: string }) {
   const submit = async (value: LeadInput) => {
     setServerError('')
     if (!navigator.onLine) {
-      setServerError('Нет подключения к сети. Данные формы сохранены.')
+      setServerError(
+        l(
+          'Нет подключения к сети. Данные формы сохранены.',
+          'No internet connection. Your form data is preserved.',
+        ),
+      )
       return
     }
     try {
@@ -48,8 +58,11 @@ export function LeadForm({ slug }: { slug: string }) {
     } catch (error) {
       setServerError(
         error instanceof ApiError && error.status === 429
-          ? 'Слишком много попыток. Попробуйте позже.'
-          : 'Не удалось отправить заявку. Проверьте данные и повторите.',
+          ? l('Слишком много попыток. Попробуйте позже.', 'Too many attempts. Try again later.')
+          : l(
+              'Не удалось отправить заявку. Проверьте данные и повторите.',
+              'Could not send the request. Check the data and try again.',
+            ),
       )
     }
   }
@@ -58,39 +71,43 @@ export function LeadForm({ slug }: { slug: string }) {
     return (
       <section className="grid gap-3 py-6 text-center" role="status">
         <CheckCircle2 className="mx-auto text-[var(--success)]" size={34} aria-hidden="true" />
-        <h2 className="heading-font m-0 text-2xl">Заявка отправлена</h2>
+        <h2 className="heading-font m-0 text-2xl">{t('publicCard.sent')}</h2>
         <p className="m-0 text-sm text-[var(--text-secondary)]">
-          Алексей получил сообщение и сможет ответить по указанному контакту.
+          {t('publicCard.received', { name: recipientName })}
         </p>
         <Button variant="secondary" onClick={() => setSuccess(false)}>
-          Отправить ещё одну
+          {t('publicCard.sendAgain')}
         </Button>
       </section>
     )
 
   return (
     <form className="grid gap-4" onSubmit={(event) => void handleSubmit(submit)(event)} noValidate>
-      <h2 className="heading-font m-0 text-2xl">Обсудим задачу?</h2>
+      <h2 className="heading-font m-0 text-2xl">{t('publicCard.formTitle')}</h2>
       <p className="m-0 text-sm text-[var(--text-secondary)]">
-        Обычно Алексей отвечает в течение рабочего дня.
+        {t('publicCard.usuallyReplies', { name: recipientName })}
       </p>
       <Field
-        label="Имя"
+        label={t('publicCard.name')}
         autoComplete="name"
-        error={errors.senderName?.message}
+        error={errors.senderName ? t('validation.name') : undefined}
         {...register('senderName')}
       />
       <Field
-        label="Контакт"
-        placeholder="@username или email"
+        label={t('publicCard.contact')}
+        placeholder={l('@username или email', '@username or email')}
         autoComplete="email"
-        error={errors.senderContact?.message}
+        error={errors.senderContact ? t('validation.contact') : undefined}
         {...register('senderContact')}
       />
-      <TextareaField label="Сообщение" error={errors.message?.message} {...register('message')} />
-      <label className="visually-hidden">
-        Сайт
-        <input tabIndex={-1} autoComplete="off" {...register('website')} />
+      <TextareaField
+        label={t('publicCard.message')}
+        error={errors.message ? t('validation.message') : undefined}
+        {...register('message')}
+      />
+      <label className="hidden" aria-hidden="true">
+        {l('Сайт', 'Website')}
+        <input tabIndex={-1} aria-hidden="true" autoComplete="off" {...register('website')} />
       </label>
       {serverError ? (
         <p className="error-text" role="alert">
@@ -99,7 +116,7 @@ export function LeadForm({ slug }: { slug: string }) {
       ) : null}
       <Button type="submit" disabled={isSubmitting}>
         <Send size={17} aria-hidden="true" />
-        {isSubmitting ? 'Отправляем…' : 'Отправить заявку'}
+        {isSubmitting ? t('publicCard.submitting') : t('publicCard.submit')}
       </Button>
     </form>
   )

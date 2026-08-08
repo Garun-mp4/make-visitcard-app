@@ -33,5 +33,5 @@ export function downloadVCard(card: CardView): void {
   anchor.href = url
   anchor.download = `${card.publication.slug || 'contact'}.vcf`
   anchor.click()
-  URL.revokeObjectURL(url)
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

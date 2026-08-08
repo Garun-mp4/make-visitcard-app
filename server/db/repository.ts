@@ -10,6 +10,9 @@ import type {
   LeadInput,
   LeadRecord,
   OwnerProfile,
+  OwnerPreferences,
+  PeriodStats,
+  StatsPeriod,
   TelegramUser,
 } from '../../shared/types.js'
 import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
@@ -29,6 +32,46 @@ interface UserRow {
   photo_url: string
   language_code: string
   is_premium: boolean
+  preferred_locale?: string | null
+  lead_notifications_enabled?: boolean
+}
+
+export async function getOwnerPreferences(uid: string): Promise<OwnerPreferences> {
+  const sql = await database()
+  const rows = rowsOf<UserRow>(
+    await sql`
+    SELECT language_code, preferred_locale, lead_notifications_enabled
+    FROM cardly_users WHERE uid = ${uid} LIMIT 1
+  `,
+  )
+  const row = rows[0]
+  if (!row) throw new AppError(404, 'owner_not_found', 'Профиль владельца не найден')
+  return {
+    locale:
+      row.preferred_locale === 'en' || row.preferred_locale === 'ru'
+        ? row.preferred_locale
+        : row.language_code.toLowerCase().startsWith('en')
+          ? 'en'
+          : 'ru',
+    leadNotificationsEnabled: row.lead_notifications_enabled ?? true,
+  }
+}
+
+export async function updateOwnerPreferences(
+  uid: string,
+  patch: Partial<OwnerPreferences>,
+): Promise<OwnerPreferences> {
+  const current = await getOwnerPreferences(uid)
+  const next = { ...current, ...patch }
+  const sql = await database()
+  await sql`
+    UPDATE cardly_users SET
+      preferred_locale = ${next.locale},
+      lead_notifications_enabled = ${next.leadNotificationsEnabled},
+      updated_at = NOW()
+    WHERE uid = ${uid}
+  `
+  return next
 }
 
 function rowsOf<T>(value: unknown): T[] {
@@ -121,15 +164,17 @@ export async function saveCard(uid: string, input: CardDraft): Promise<CardDraft
       INSERT INTO cardly_cards (owner_uid, data, slug, published, public_data, updated_at)
       VALUES (
         ${uid}, ${JSON.stringify(card)}::jsonb,
-        ${card.publication.slug || null}, ${card.publication.published},
-        ${card.publication.published ? JSON.stringify(sanitizePublicSnapshot(card)) : null}::jsonb,
+        ${card.publication.slug || null}, FALSE, NULL,
         NOW()
       )
       ON CONFLICT (owner_uid) DO UPDATE SET
         data = EXCLUDED.data,
-        slug = EXCLUDED.slug,
-        published = EXCLUDED.published,
-        public_data = EXCLUDED.public_data,
+        slug = CASE
+          WHEN cardly_cards.published THEN cardly_cards.slug
+          ELSE EXCLUDED.slug
+        END,
+        published = cardly_cards.published,
+        public_data = cardly_cards.public_data,
         updated_at = NOW()
     `
   } catch (error) {
@@ -219,9 +264,13 @@ export async function getPublicCard(slug: string): Promise<CardView | null> {
 
 export async function createLead(slug: string, input: LeadInput) {
   const sql = await database()
-  const owners = rowsOf<{ owner_uid: string; telegram_id: string }>(
+  const owners = rowsOf<{
+    owner_uid: string
+    telegram_id: string
+    lead_notifications_enabled: boolean
+  }>(
     await sql`
-    SELECT c.owner_uid, u.telegram_id
+    SELECT c.owner_uid, u.telegram_id, u.lead_notifications_enabled
     FROM cardly_cards c JOIN cardly_users u ON u.uid = c.owner_uid
     WHERE c.slug = ${slug} AND c.published = TRUE LIMIT 1
   `,
@@ -245,8 +294,20 @@ export async function createLead(slug: string, input: LeadInput) {
         total_leads = cardly_stats.total_leads + 1,
         updated_at = NOW()
     `,
+    sql`
+      INSERT INTO cardly_daily_stats (owner_uid, day, leads)
+      VALUES (${owner.owner_uid}, CURRENT_DATE, 1)
+      ON CONFLICT (owner_uid, day) DO UPDATE SET
+        leads = cardly_daily_stats.leads + 1,
+        updated_at = NOW()
+    `,
   ])
-  return { id, ownerUid: owner.owner_uid, telegramId: owner.telegram_id }
+  return {
+    id,
+    ownerUid: owner.owner_uid,
+    telegramId: owner.telegram_id,
+    notifyOwner: owner.lead_notifications_enabled,
+  }
 }
 
 type MetricColumn =
@@ -355,6 +416,117 @@ export async function getOwnerDashboard(uid: string): Promise<{
     createdAt: new Date(String(lead.created_at)).toISOString(),
   }))
   return { owner, stats, leads }
+}
+
+interface PeriodMetricRow {
+  label?: string
+  views: number
+  primary_clicks: number
+  link_clicks: number
+  project_opens: number
+  leads: number
+  shares: number
+}
+
+function metricTotals(rows: PeriodMetricRow[]) {
+  return rows.reduce(
+    (total, row) => ({
+      views: total.views + Number(row.views),
+      primaryClicks: total.primaryClicks + Number(row.primary_clicks),
+      linkClicks: total.linkClicks + Number(row.link_clicks),
+      projectOpens: total.projectOpens + Number(row.project_opens),
+      leads: total.leads + Number(row.leads),
+      shares: total.shares + Number(row.shares),
+    }),
+    { views: 0, primaryClicks: 0, linkClicks: 0, projectOpens: 0, leads: 0, shares: 0 },
+  )
+}
+
+export function percentDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null
+  return Math.round(((current - previous) / previous) * 100)
+}
+
+export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<PeriodStats> {
+  const sql = await database()
+  if (period === 'all') {
+    const rows = rowsOf<PeriodMetricRow>(
+      await sql`
+      SELECT TO_CHAR(DATE_TRUNC('month', day), 'MM.YYYY') AS label,
+        SUM(views)::int AS views, SUM(primary_clicks)::int AS primary_clicks,
+        SUM(link_clicks)::int AS link_clicks, SUM(project_opens)::int AS project_opens,
+        SUM(leads)::int AS leads, SUM(shares)::int AS shares
+      FROM cardly_daily_stats WHERE owner_uid = ${uid}
+      GROUP BY DATE_TRUNC('month', day) ORDER BY DATE_TRUNC('month', day)
+    `,
+    )
+    const totals = metricTotals(rows)
+    return {
+      period,
+      range: { from: rows[0]?.label ?? null, to: rows.at(-1)?.label ?? null },
+      totals,
+      deltas: { views: null, primaryClicks: null, leads: null },
+      series: rows.map((row) => ({ label: String(row.label), views: Number(row.views) })),
+      averageViews: rows.length ? Math.round(totals.views / rows.length) : 0,
+      popularActions: [
+        { label: 'primary', value: totals.primaryClicks },
+        { label: 'links', value: totals.linkClicks },
+        { label: 'projects', value: totals.projectOpens },
+        { label: 'share', value: totals.shares },
+      ],
+    }
+  }
+  const days = period === '7' ? 7 : 30
+  const [currentRaw, previousRaw] = await Promise.all([
+    sql`
+      SELECT TO_CHAR(series.day, 'DD.MM') AS label,
+        COALESCE(stats.views, 0)::int AS views,
+        COALESCE(stats.primary_clicks, 0)::int AS primary_clicks,
+        COALESCE(stats.link_clicks, 0)::int AS link_clicks,
+        COALESCE(stats.project_opens, 0)::int AS project_opens,
+        COALESCE(stats.leads, 0)::int AS leads,
+        COALESCE(stats.shares, 0)::int AS shares
+      FROM GENERATE_SERIES(CURRENT_DATE - (${days} - 1), CURRENT_DATE, INTERVAL '1 day') AS series(day)
+      LEFT JOIN cardly_daily_stats stats ON stats.owner_uid = ${uid} AND stats.day = series.day
+      ORDER BY series.day
+    `,
+    sql`
+      SELECT COALESCE(SUM(views), 0)::int AS views,
+        COALESCE(SUM(primary_clicks), 0)::int AS primary_clicks,
+        COALESCE(SUM(link_clicks), 0)::int AS link_clicks,
+        COALESCE(SUM(project_opens), 0)::int AS project_opens,
+        COALESCE(SUM(leads), 0)::int AS leads,
+        COALESCE(SUM(shares), 0)::int AS shares
+      FROM cardly_daily_stats
+      WHERE owner_uid = ${uid}
+        AND day BETWEEN CURRENT_DATE - (${days} * 2 - 1) AND CURRENT_DATE - ${days}
+    `,
+  ])
+  const rows = rowsOf<PeriodMetricRow>(currentRaw)
+  const previousRows = rowsOf<PeriodMetricRow>(previousRaw)
+  const totals = metricTotals(rows)
+  const previous = metricTotals(previousRows)
+  const today = new Date()
+  const from = new Date(today)
+  from.setUTCDate(from.getUTCDate() - days + 1)
+  return {
+    period,
+    range: { from: from.toISOString().slice(0, 10), to: today.toISOString().slice(0, 10) },
+    totals,
+    deltas: {
+      views: percentDelta(totals.views, previous.views),
+      primaryClicks: percentDelta(totals.primaryClicks, previous.primaryClicks),
+      leads: percentDelta(totals.leads, previous.leads),
+    },
+    series: rows.map((row) => ({ label: String(row.label), views: Number(row.views) })),
+    averageViews: Math.round(totals.views / days),
+    popularActions: [
+      { label: 'primary', value: totals.primaryClicks },
+      { label: 'links', value: totals.linkClicks },
+      { label: 'projects', value: totals.projectOpens },
+      { label: 'share', value: totals.shares },
+    ],
+  }
 }
 
 export async function updateLeadStatus(

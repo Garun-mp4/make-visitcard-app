@@ -1,19 +1,21 @@
 import { ChartNoAxesColumn, ContactRound, Pencil, UserRound } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { useCardStore } from '@/app/card-store'
 
 const items = [
-  { to: '/app/card', label: 'Визитка', icon: ContactRound },
-  { to: '/app/editor', label: 'Редактор', icon: Pencil },
-  { to: '/app/stats', label: 'Статистика', icon: ChartNoAxesColumn },
-  { to: '/app/profile', label: 'Профиль', icon: UserRound },
-]
+  { to: '/app/card', key: 'card', icon: ContactRound },
+  { to: '/app/editor', key: 'editor', icon: Pencil },
+  { to: '/app/stats', key: 'stats', icon: ChartNoAxesColumn },
+  { to: '/app/profile', key: 'profile', icon: UserRound },
+] as const
 
 export function DesktopSidebar() {
   const { card, owner } = useCardStore()
+  const { t } = useTranslation()
   return (
     <aside className="fixed inset-y-0 left-0 hidden w-[220px] border-r border-[var(--border)] bg-[var(--surface)] px-5 py-7 lg:block">
       <div className="heading-font text-xl font-medium">Cardly</div>
@@ -24,8 +26,8 @@ export function DesktopSidebar() {
           <div className="truncate text-[10px] text-[var(--text-muted)]">@{owner.username}</div>
         </div>
       </div>
-      <nav className="mt-5 grid gap-2" aria-label="Основная навигация">
-        {items.map(({ to, label, icon: Icon }) => (
+      <nav className="mt-5 grid gap-2" aria-label={t('common.mainNavigation')}>
+        {items.map(({ to, key, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
@@ -37,7 +39,7 @@ export function DesktopSidebar() {
             }
           >
             <Icon size={19} strokeWidth={1.8} aria-hidden="true" />
-            {label}
+            {t(`nav.${key}`)}
           </NavLink>
         ))}
       </nav>

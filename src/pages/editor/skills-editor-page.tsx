@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { moveItem } from '@/lib/utils'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function SkillsEditorPage() {
+  const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const [skill, setSkill] = useState('')
   const add = () => {
@@ -29,21 +31,30 @@ export default function SkillsEditorPage() {
     setSkill('')
   }
   return (
-    <EditorShell title="Навыки">
+    <EditorShell title={l('Навыки', 'Skills')}>
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <Field
-            label="Новый навык"
+            label={l('Новый навык', 'New skill')}
             value={skill}
             maxLength={30}
             onChange={(event) => setSkill(event.target.value)}
           />
         </div>
-        <Button onClick={add} disabled={!skill.trim() || card.skills.length >= 10}>
+        <Button
+          aria-label={l('Добавить навык', 'Add skill')}
+          onClick={add}
+          disabled={!skill.trim() || card.skills.length >= 10}
+        >
           <Plus size={17} />
         </Button>
       </div>
-      <p className="helper-text">До 10 навыков · {card.skills.length} добавлено</p>
+      <p className="helper-text">
+        {l(
+          `До 10 навыков · ${card.skills.length} добавлено`,
+          `Up to 10 skills · ${card.skills.length} added`,
+        )}
+      </p>
       <div className="stack-12">
         {card.skills.map((item, index) => (
           <div key={item.id} className="surface flex min-h-14 items-center gap-2 rounded-xl px-3">

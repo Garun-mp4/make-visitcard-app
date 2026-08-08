@@ -1,20 +1,25 @@
-import { Bell, Copy, ExternalLink, Languages, LogOut, ShieldCheck } from 'lucide-react'
+import { Bell, Copy, ExternalLink, Languages, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { useCardStore } from '@/app/card-store'
 import { Avatar } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
 import { changeLocale } from '@/i18n'
 import { copyText } from '@/lib/utils'
+import { useFeedback } from '@/components/feedback/feedback-provider'
+import { useTranslation } from 'react-i18next'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
-  const { card, owner, resetDemo } = useCardStore()
+  const { card, owner, preferences, setPreferences } = useCardStore()
+  const feedback = useFeedback()
+  const { t } = useTranslation()
+  const l = useLocaleText()
   const url = `${window.location.origin}/c/${card.publication.slug}`
   return (
     <main className="owner-mobile-content lg:max-w-[760px] lg:py-8">
       <header className="page-header">
-        <h1 className="page-title">Профиль</h1>
+        <h1 className="page-title">{t('profile.title')}</h1>
         <span className="text-xl text-[var(--text-muted)]">•••</span>
       </header>
       <section className="surface flex items-center gap-3 rounded-xl p-4">
@@ -28,13 +33,13 @@ export default function ProfilePage() {
       </section>
       <section className="surface mt-3 rounded-xl p-4 text-xs">
         <dl className="m-0 grid grid-cols-[1fr_auto] gap-y-3">
-          <dt className="text-[var(--text-muted)]">Telegram ID</dt>
+          <dt className="text-[var(--text-muted)]">{t('profile.telegramId')}</dt>
           <dd className="m-0">{owner.telegramId}</dd>
-          <dt className="text-[var(--text-muted)]">Язык</dt>
+          <dt className="text-[var(--text-muted)]">{t('profile.language')}</dt>
           <dd className="m-0">{owner.languageCode.toUpperCase()}</dd>
-          <dt className="text-[var(--text-muted)]">Premium</dt>
+          <dt className="text-[var(--text-muted)]">{t('profile.premium')}</dt>
           <dd className="m-0">{owner.isPremium ? 'Да' : 'Нет'}</dd>
-          <dt className="text-[var(--text-muted)]">Платформа</dt>
+          <dt className="text-[var(--text-muted)]">{t('profile.platform')}</dt>
           <dd className="m-0">{owner.platform}</dd>
         </dl>
       </section>
@@ -42,12 +47,61 @@ export default function ProfilePage() {
         {[
           [
             Languages,
-            'Язык интерфейса',
-            () => void changeLocale(document.documentElement.lang === 'en' ? 'ru' : 'en'),
+            `${t('profile.interfaceLanguage')} · ${preferences.locale.toUpperCase()}`,
+            () => {
+              const locale = preferences.locale === 'en' ? 'ru' : 'en'
+              void setPreferences({ locale })
+                .then(() => changeLocale(locale))
+                .catch(() =>
+                  feedback.notify(
+                    l('Не удалось изменить язык', 'Could not change the language'),
+                    'error',
+                  ),
+                )
+            },
           ],
-          [Bell, 'Уведомления', () => undefined],
-          [ExternalLink, 'Публичная визитка', () => navigate(`/c/${card.publication.slug}`)],
-          [Copy, 'Скопировать ссылку', () => void copyText(url)],
+          [
+            Bell,
+            `${t('profile.notifications')} · ${preferences.leadNotificationsEnabled ? t('profile.on') : t('profile.off')}`,
+            () =>
+              void setPreferences({
+                leadNotificationsEnabled: !preferences.leadNotificationsEnabled,
+              })
+                .then(() =>
+                  feedback.notify(
+                    preferences.leadNotificationsEnabled
+                      ? l('Уведомления выключены', 'Notifications disabled')
+                      : l('Уведомления включены', 'Notifications enabled'),
+                    'success',
+                  ),
+                )
+                .catch(() =>
+                  feedback.notify(
+                    l('Не удалось сохранить настройку', 'Could not save the setting'),
+                    'error',
+                  ),
+                ),
+          ],
+          [
+            ExternalLink,
+            t('profile.publicCard'),
+            () =>
+              navigate(
+                card.publication.published ? `/c/${card.publication.slug}` : '/app/editor/publish',
+              ),
+          ],
+          [
+            Copy,
+            t('profile.copyLink'),
+            () =>
+              card.publication.published
+                ? void copyText(url).then((copied) =>
+                    copied
+                      ? feedback.notify(t('feedback.copied'), 'success')
+                      : feedback.revealLink(t('profile.copyLink'), url),
+                  )
+                : navigate('/app/editor/publish'),
+          ],
         ].map(([Icon, label, action]) => {
           const I = Icon as typeof Languages
           return (
@@ -64,21 +118,8 @@ export default function ProfilePage() {
       </div>
       <p className="mt-4 flex gap-2 text-xs leading-relaxed text-[var(--text-muted)]">
         <ShieldCheck size={17} className="shrink-0" />
-        Telegram ID и данные авторизации видны только вам. Публичные контакты настраиваются
-        отдельно.
+        {t('profile.privacy')}
       </p>
-      <Button
-        className="mt-4"
-        variant="danger"
-        fullWidth
-        onClick={() => {
-          resetDemo()
-          void navigate('/')
-        }}
-      >
-        <LogOut size={17} />
-        Выйти
-      </Button>
     </main>
   )
 }

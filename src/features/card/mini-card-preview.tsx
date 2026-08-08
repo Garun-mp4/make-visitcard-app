@@ -1,13 +1,18 @@
 import type { CardDraft } from '@shared/types'
 import { Avatar } from '@/components/ui/avatar'
+import { accentStyle } from '@/lib/accent-preset'
+import { formatPrice } from '@/lib/utils'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function MiniCardPreview({ card }: { card: CardDraft }) {
+  const l = useLocaleText()
   const service = card.services.find((item) => item.enabled)
   const dark = card.appearance.themeId === 'dark'
   const editorial = card.appearance.themeId === 'editorial'
   return (
     <article
-      className={`${dark ? 'bg-[#111612] text-[#f1f4f0] [--mini-muted:#aab4ac] [--mini-accent:#dca56d]' : editorial ? 'bg-[#f4ecdc] text-[#34281f] [--mini-muted:#715f50] [--mini-accent:#a94e32]' : 'bg-[#fbfcf9] text-[#171916] [--mini-muted:#60675e] [--mini-accent:#1f6b4f]'} min-h-[590px] overflow-hidden p-5`}
+      style={accentStyle(card.appearance.accentPreset, dark)}
+      className={`${dark ? 'bg-[#111612] text-[#f1f4f0] [--mini-muted:#aab4ac]' : editorial ? 'bg-[#f4ecdc] text-[#34281f] [--mini-muted:#715f50]' : 'bg-[#fbfcf9] text-[#171916] [--mini-muted:#60675e]'} min-h-[590px] overflow-hidden p-5`}
     >
       <div
         className={`flex items-center justify-between text-[11px] ${editorial ? 'font-mono uppercase tracking-[0.12em]' : dark ? 'font-mono uppercase tracking-[0.13em] text-[#dca56d]' : ''}`}
@@ -58,7 +63,11 @@ export function MiniCardPreview({ card }: { card: CardDraft }) {
           </h3>
           <p className="text-sm leading-relaxed text-[var(--mini-muted)]">{service.description}</p>
           <strong className="text-xs text-[var(--mini-accent)]">
-            от 35 000 ₽ · {service.durationText}
+            {service.priceType === 'negotiable'
+              ? l('По договорённости', 'By agreement')
+              : service.priceType === 'hidden'
+                ? service.durationText
+                : `${service.priceType === 'from' ? l('от ', 'from ') : ''}${formatPrice(service.price, service.currency)}${service.durationText ? ` · ${service.durationText}` : ''}`}
           </strong>
         </div>
       ) : null}

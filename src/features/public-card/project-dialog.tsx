@@ -5,6 +5,7 @@ import type { Project } from '@shared/types'
 import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { telegram } from '@/lib/telegram'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function ProjectDialog({
   project,
@@ -15,6 +16,7 @@ export function ProjectDialog({
   open: boolean
   onClose: () => void
 }) {
+  const l = useLocaleText()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
 
@@ -56,7 +58,11 @@ export function ProjectDialog({
                 className="absolute inset-0 size-full object-cover"
               />
             ) : null}
-            <IconButton aria-label="Закрыть проект" onClick={onClose} className="relative">
+            <IconButton
+              aria-label={l('Закрыть проект', 'Close project')}
+              onClick={onClose}
+              className="relative"
+            >
               <X size={20} aria-hidden="true" />
             </IconButton>
           </div>
@@ -72,7 +78,7 @@ export function ProjectDialog({
             </p>
             {project.projectUrl ? (
               <Button onClick={() => telegram.openLink(project.projectUrl)}>
-                Открыть проект <ExternalLink size={17} aria-hidden="true" />
+                {l('Открыть проект', 'Open project')} <ExternalLink size={17} aria-hidden="true" />
               </Button>
             ) : null}
           </div>

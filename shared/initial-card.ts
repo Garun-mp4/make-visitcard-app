@@ -1,6 +1,9 @@
 import type { CardDraft, OwnerProfile } from './types.js'
 
-export function createInitialCard(owner: OwnerProfile, timestamp = new Date().toISOString()): CardDraft {
+export function createInitialCard(
+  owner: OwnerProfile,
+  timestamp = new Date().toISOString(),
+): CardDraft {
   const displayName = [owner.firstName, owner.lastName].filter(Boolean).join(' ').trim()
   const telegramUrl = owner.username ? `https://t.me/${owner.username}` : ''
   const english = owner.languageCode.toLowerCase().startsWith('en')

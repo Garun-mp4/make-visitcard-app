@@ -5,6 +5,11 @@ import { PublicActions } from '@/features/public-card/public-actions'
 import { ProjectCover } from '@/features/public-card/theme-shared'
 import { formatPrice } from '@/lib/utils'
 import { telegram } from '@/lib/telegram'
+import { accentStyle } from '@/lib/accent-preset'
+import { useTranslation } from 'react-i18next'
+import { recordPublicEvent } from '@/services/public-analytics'
+import { PublicLinks } from '@/features/public-card/public-links'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function EditorialTheme({
   card,
@@ -15,14 +20,19 @@ export function EditorialTheme({
   onProject: (project: Project) => void
   onLead: () => void
 }) {
+  const { t } = useTranslation()
+  const l = useLocaleText()
   const projects = card.projects.filter((project) => project.enabled)
   return (
-    <div className="min-h-[100dvh] bg-[#f4ecdc] text-[#34281f] [--surface:#f8f1e4] [--surface-secondary:#eee2cf] [--border:#d9cbb5] [--text-primary:#34281f] [--text-secondary:#715f50] [--text-muted:#8a7564] [--accent:#a94e32] [--accent-hover:#913e27] [--accent-soft:#ead8c7] [--accent-contrast:#fff]">
+    <div
+      style={accentStyle(card.appearance.accentPreset)}
+      className="min-h-[100dvh] bg-[#f4ecdc] text-[#34281f] [--surface:#f8f1e4] [--surface-secondary:#eee2cf] [--border:#d9cbb5] [--text-primary:#34281f] [--text-secondary:#715f50] [--text-muted:#8a7564]"
+    >
       <header className="flex min-h-20 items-center justify-between border-b border-[#d7c8b2] px-5 font-mono text-[10px] uppercase tracking-[0.13em] lg:px-[5.5vw]">
         <span>Cardly Journal / № 07</span>
         <nav className="hidden gap-4 md:flex">
-          <a href="#editorial-work">Work</a>
-          <button onClick={onLead}>Contact</button>
+          <a href="#editorial-work">{t('publicCard.projects')}</a>
+          <button onClick={onLead}>{t('publicCard.contacts')}</button>
         </nav>
         <PublicActions card={card} />
       </header>
@@ -41,11 +51,16 @@ export function EditorialTheme({
           </div>
           <div className="grid content-between border-y border-[#d7c8b2] py-5">
             <p className="m-0 leading-relaxed text-[#715f50]">
-              {card.profile.profession}. Исследую сценарии, выстраиваю структуру и довожу решения до
-              реализации.
+              {l(
+                `${card.profile.profession}. Исследую сценарии, выстраиваю структуру и довожу решения до реализации.`,
+                `${card.profile.profession}. I research scenarios, shape the structure, and carry solutions through implementation.`,
+              )}
             </p>
             <button
-              onClick={() => telegram.openLink(card.primaryAction.value)}
+              onClick={() => {
+                recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                telegram.openLink(card.primaryAction.value)
+              }}
               className="flex min-h-14 items-center justify-between border-t border-[#d7c8b2] pt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#a94e32]"
             >
               {card.profile.availabilityText}
@@ -56,7 +71,7 @@ export function EditorialTheme({
         <section id="editorial-work" className="grid gap-8 lg:grid-cols-[0.95fr_2.35fr] lg:gap-9">
           <div>
             <h2 className="border-b border-[#d7c8b2] pb-4 font-serif text-3xl">
-              01 / Форматы работы
+              01 / {l('Форматы работы', 'Work formats')}
             </h2>
             {card.services
               .filter((s) => s.enabled)
@@ -68,7 +83,7 @@ export function EditorialTheme({
                   <h3 className="font-serif text-2xl">{service.title}</h3>
                   {service.price ? (
                     <p className="font-mono text-[10px] font-semibold">
-                      {service.priceType === 'from' ? 'от ' : ''}
+                      {service.priceType === 'from' ? l('от ', 'from ') : ''}
                       {formatPrice(service.price, service.currency)}
                     </p>
                   ) : null}
@@ -97,10 +112,11 @@ export function EditorialTheme({
               onClick={onLead}
               className="flex w-full items-center justify-between bg-[#a94e32] p-5 font-mono text-xs uppercase tracking-[0.14em] text-white"
             >
-              Написать <ArrowUpRight />
+              {t('publicCard.write')} <ArrowUpRight />
             </button>
           </section>
         ) : null}
+        <PublicLinks card={card} className="mt-8" />
       </main>
     </div>
   )

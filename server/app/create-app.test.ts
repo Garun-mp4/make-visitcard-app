@@ -22,4 +22,16 @@ describe('API shell', () => {
     const response = await request(app).get('/api/cards/publish').expect(405)
     expect(response.body.code).toBe('method_not_allowed')
   })
+
+  it.each(['/api/owner/preferences', '/api/owner/stats'])(
+    'recognizes %s as an API route',
+    async (path) => {
+      const response = await request(app)
+        .post(path)
+        .set('Content-Type', 'application/json')
+        .send({})
+        .expect(405)
+      expect(response.body.code).toBe('method_not_allowed')
+    },
+  )
 })

@@ -7,18 +7,19 @@ import { SaveStatus } from '@/components/feedback/save-status'
 import { MiniCardPreview } from '@/features/card/mini-card-preview'
 import { cn } from '@/lib/utils'
 import { useTelegramBack } from '@/hooks/use-telegram'
-
-const sections = [
-  ['/app/editor/basic', 'Основное'],
-  ['/app/editor/contacts', 'Контакты'],
-  ['/app/editor/skills', 'Навыки'],
-  ['/app/editor/services', 'Услуги'],
-  ['/app/editor/projects', 'Проекты'],
-  ['/app/editor/appearance', 'Оформление'],
-  ['/app/editor/publish', 'Публикация'],
-] as const
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export function EditorShell({ title, children }: PropsWithChildren<{ title: string }>) {
+  const l = useLocaleText()
+  const sections = [
+    ['/app/editor/basic', l('Основное', 'Basic')],
+    ['/app/editor/contacts', l('Контакты', 'Contacts')],
+    ['/app/editor/skills', l('Навыки', 'Skills')],
+    ['/app/editor/services', l('Услуги', 'Services')],
+    ['/app/editor/projects', l('Проекты', 'Projects')],
+    ['/app/editor/appearance', l('Оформление', 'Appearance')],
+    ['/app/editor/publish', l('Публикация', 'Publication')],
+  ] as const
   const navigate = useNavigate()
   const { card, saveError, saveNow, saveStatus } = useCardStore()
   useTelegramBack(() => void navigate('/app/editor'))
@@ -27,7 +28,7 @@ export function EditorShell({ title, children }: PropsWithChildren<{ title: stri
       <div className="mx-auto max-w-[1180px]">
         <header className="page-header px-5 lg:px-0">
           <button
-            aria-label="Назад к разделам"
+            aria-label={l('Назад к разделам', 'Back to sections')}
             onClick={() => navigate('/app/editor')}
             className="grid size-11 place-items-center rounded-xl lg:hidden"
           >
@@ -39,7 +40,7 @@ export function EditorShell({ title, children }: PropsWithChildren<{ title: stri
         <div className="lg:grid lg:grid-cols-[220px_minmax(360px,1fr)_410px] lg:gap-6">
           <nav
             className="surface hidden min-h-[760px] rounded-2xl p-3 lg:grid lg:content-start lg:gap-1"
-            aria-label="Разделы редактора"
+            aria-label={l('Разделы редактора', 'Editor sections')}
           >
             {sections.map(([to, label]) => (
               <NavLink
@@ -63,7 +64,7 @@ export function EditorShell({ title, children }: PropsWithChildren<{ title: stri
           </section>
           <aside className="hidden min-h-[760px] rounded-2xl bg-[#e9ece8] p-6 lg:block">
             <div className="mb-4 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
-              Живой предпросмотр · 390 px
+              {l('Живой предпросмотр · 390 px', 'Live preview · 390 px')}
             </div>
             <div className="mx-auto max-h-[680px] max-w-[350px] overflow-y-auto border border-[var(--border)]">
               <MiniCardPreview card={card} />

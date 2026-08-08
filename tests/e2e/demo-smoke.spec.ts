@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('cardly-locale', 'ru'))
   await page.route('https://telegram.org/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/javascript', body: '' }),
   )
@@ -57,4 +58,16 @@ test('theme switching persists into the public card', async ({ page }, testInfo)
 test('unknown route renders a not-found state', async ({ page }) => {
   await page.goto('/not-found')
   await expect(page.getByRole('heading')).toContainText('не найдена')
+})
+
+test('new editor rows start empty and language changes the whole navigation', async ({ page }) => {
+  await page.goto('/app/editor/contacts')
+  await page.getByRole('button', { name: 'Добавить' }).click()
+  await expect(page.getByLabel('Название ссылки').last()).toHaveValue('')
+  await expect(page.getByLabel('URL ссылки').last()).toHaveValue('')
+
+  await page.goto('/app/profile')
+  await page.getByRole('button', { name: /Язык интерфейса/ }).click()
+  await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Statistics' })).toBeVisible()
 })

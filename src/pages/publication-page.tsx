@@ -9,13 +9,20 @@ import { EditorShell } from '@/features/editor/editor-shell'
 import { copyText } from '@/lib/utils'
 import { clientEnv } from '@/config/client-env'
 import { apiRequest } from '@/services/api-client'
+import { useFeedback } from '@/components/feedback/feedback-provider'
+import { shareOrCopy } from '@/lib/share'
+import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 type SlugState = 'idle' | 'checking' | 'available' | 'unavailable' | 'invalid' | 'error'
 
 export default function PublicationPage() {
   const { card, updateCard } = useCardStore()
+  const feedback = useFeedback()
+  const l = useLocaleText()
   const [slugState, setSlugState] = useState<SlugState>('idle')
   const [busy, setBusy] = useState(false)
+  const [confirmUnpublish, setConfirmUnpublish] = useState(false)
   const timer = useRef<number | null>(null)
   const slug = card.publication.slug
   const publicUrl = `${window.location.origin}/c/${slug}`
@@ -65,12 +72,14 @@ export default function PublicationPage() {
         },
         lastPublishedAt: new Date().toISOString(),
       }))
+      feedback.notify(l('Визитка опубликована', 'Card published'), 'success')
+    } catch {
+      feedback.notify(l('Не удалось опубликовать визитку', 'Could not publish the card'), 'error')
     } finally {
       setBusy(false)
     }
   }
   const unpublish = async () => {
-    if (!window.confirm('Снять визитку с публикации? Адрес останется за вами.')) return
     setBusy(true)
     try {
       if (!clientEnv.demoMode)
@@ -83,6 +92,13 @@ export default function PublicationPage() {
           updatedAt: new Date().toISOString(),
         },
       }))
+      setConfirmUnpublish(false)
+      feedback.notify(l('Визитка снята с публикации', 'Card unpublished'), 'success')
+    } catch {
+      feedback.notify(
+        l('Не удалось снять визитку с публикации', 'Could not unpublish the card'),
+        'error',
+      )
     } finally {
       setBusy(false)
     }
@@ -96,24 +112,25 @@ export default function PublicationPage() {
     link.href = url
     link.download = `cardly-${slug}-qr.svg`
     link.click()
-    URL.revokeObjectURL(url)
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    feedback.notify(l('QR-код скачан', 'QR code downloaded'), 'success')
   }
 
   return (
-    <EditorShell title="Публикация">
+    <EditorShell title={l('Публикация', 'Publication')}>
       <div>
         {card.publication.published ? (
           <span className="inline-flex rounded-full bg-[var(--accent-soft)] px-3 py-2 text-xs font-semibold text-[var(--success)]">
-            Опубликовано
+            {l('Опубликовано', 'Published')}
           </span>
         ) : (
           <span className="inline-flex rounded-full bg-[var(--surface-secondary)] px-3 py-2 text-xs">
-            Не опубликовано
+            {l('Не опубликовано', 'Not published')}
           </span>
         )}
       </div>
       <label className="field-group">
-        <span className="field-label">Адрес визитки</span>
+        <span className="field-label">{l('Адрес визитки', 'Card address')}</span>
         <div className="field-control flex items-center gap-1">
           <span className="text-[var(--text-muted)]">cardly.me/</span>
           <input
@@ -133,11 +150,11 @@ export default function PublicationPage() {
           {
             {
               idle: '',
-              checking: 'Проверяем адрес…',
-              available: 'Адрес свободен',
-              unavailable: 'Адрес уже занят',
-              invalid: 'Проверьте формат адреса',
-              error: 'Не удалось проверить адрес',
+              checking: l('Проверяем адрес…', 'Checking address…'),
+              available: l('Адрес свободен', 'Address is available'),
+              unavailable: l('Адрес уже занят', 'Address is taken'),
+              invalid: l('Проверьте формат адреса', 'Check the address format'),
+              error: l('Не удалось проверить адрес', 'Could not check the address'),
             }[slugState]
           }
         </span>
@@ -147,9 +164,15 @@ export default function PublicationPage() {
           <div className="surface flex min-h-14 items-center justify-between rounded-xl px-3">
             <span className="min-w-0 truncate text-sm">{publicUrl}</span>
             <button
-              aria-label="Скопировать HTTPS ссылку"
+              aria-label={l('Скопировать HTTPS ссылку', 'Copy HTTPS link')}
               className="grid size-11 place-items-center text-[var(--accent)]"
-              onClick={() => void copyText(publicUrl)}
+              onClick={() =>
+                void copyText(publicUrl).then((copied) =>
+                  copied
+                    ? feedback.notify(l('HTTPS-ссылка скопирована', 'HTTPS link copied'), 'success')
+                    : feedback.revealLink('HTTPS-ссылка', publicUrl),
+                )
+              }
             >
               <Copy size={19} />
             </button>
@@ -157,9 +180,18 @@ export default function PublicationPage() {
           <div className="surface flex min-h-14 items-center justify-between rounded-xl px-3">
             <span className="min-w-0 truncate text-sm">{telegramUrl}</span>
             <button
-              aria-label="Скопировать Telegram ссылку"
+              aria-label={l('Скопировать Telegram ссылку', 'Copy Telegram link')}
               className="grid size-11 place-items-center text-[var(--accent)]"
-              onClick={() => void copyText(telegramUrl)}
+              onClick={() =>
+                void copyText(telegramUrl).then((copied) =>
+                  copied
+                    ? feedback.notify(
+                        l('Telegram-ссылка скопирована', 'Telegram link copied'),
+                        'success',
+                      )
+                    : feedback.revealLink('Telegram-ссылка', telegramUrl),
+                )
+              }
             >
               <Copy size={19} />
             </button>
@@ -179,23 +211,46 @@ export default function PublicationPage() {
             <div className="grid content-center gap-2">
               <Button variant="secondary" onClick={downloadQr}>
                 <Download size={17} />
-                Скачать QR
+                {l('Скачать QR', 'Download QR')}
               </Button>
               <Button
                 variant="secondary"
-                onClick={() => void navigator.share?.({ url: publicUrl })}
+                onClick={() =>
+                  void shareOrCopy({ title: card.profile.displayName, url: publicUrl }).then(
+                    (result) =>
+                      result === 'copied'
+                        ? feedback.notify(l('Ссылка скопирована', 'Link copied'), 'success')
+                        : result === 'manual'
+                          ? feedback.revealLink(
+                              l('Поделиться визиткой', 'Share business card'),
+                              publicUrl,
+                            )
+                          : feedback.notify(
+                              l('Окно отправки открыто', 'Share dialog opened'),
+                              'success',
+                            ),
+                  )
+                }
               >
                 <Share2 size={17} />
-                Поделиться
+                {l('Поделиться', 'Share')}
               </Button>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-xl bg-[var(--warning-soft)] p-4 text-xs text-[var(--warning)]">
             <AlertTriangle size={18} />
-            Публикация создаёт отдельный очищенный снимок без приватных Telegram-данных.
+            {l(
+              'Публикация создаёт отдельный очищенный снимок без приватных Telegram-данных.',
+              'Publication creates a sanitized snapshot without private Telegram data.',
+            )}
           </div>
-          <Button variant="danger" fullWidth disabled={busy} onClick={() => void unpublish()}>
-            Снять с публикации
+          <Button
+            variant="danger"
+            fullWidth
+            disabled={busy}
+            onClick={() => setConfirmUnpublish(true)}
+          >
+            {l('Снять с публикации', 'Unpublish')}
           </Button>
         </>
       ) : (
@@ -204,9 +259,21 @@ export default function PublicationPage() {
           disabled={busy || slugState !== 'available'}
           onClick={() => void publish()}
         >
-          {busy ? 'Публикуем…' : 'Опубликовать визитку'}
+          {busy ? l('Публикуем…', 'Publishing…') : l('Опубликовать визитку', 'Publish card')}
         </Button>
       )}
+      <ConfirmDialog
+        open={confirmUnpublish}
+        title={l('Снять визитку с публикации?', 'Unpublish the card?')}
+        description={l(
+          'Публичная страница станет недоступна, но адрес останется за вами.',
+          'The public page will become unavailable, but the address remains reserved.',
+        )}
+        confirmLabel={l('Снять', 'Unpublish')}
+        cancelLabel={l('Отмена', 'Cancel')}
+        onCancel={() => setConfirmUnpublish(false)}
+        onConfirm={() => void unpublish()}
+      />
     </EditorShell>
   )
 }

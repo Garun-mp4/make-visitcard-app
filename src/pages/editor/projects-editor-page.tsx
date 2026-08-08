@@ -6,8 +6,10 @@ import { EditorShell } from '@/features/editor/editor-shell'
 import { moveItem } from '@/lib/utils'
 import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
 import { useState } from 'react'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function ProjectsEditorPage() {
+  const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const add = () => {
@@ -30,15 +32,17 @@ export default function ProjectsEditorPage() {
     }))
   }
   return (
-    <EditorShell title="Проекты">
+    <EditorShell title={l('Проекты', 'Projects')}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="heading-font m-0 text-lg">Избранные проекты</h2>
+          <h2 className="heading-font m-0 text-lg">
+            {l('Избранные проекты', 'Featured projects')}
+          </h2>
           <p className="helper-text">{card.projects.length} из 6</p>
         </div>
         <Button variant="secondary" onClick={add} disabled={card.projects.length >= 6}>
           <Plus size={17} />
-          Добавить
+          {l('Добавить', 'Add')}
         </Button>
       </div>
       {card.projects.map((project, index) => (
@@ -48,7 +52,7 @@ export default function ProjectsEditorPage() {
             aria-label="Название проекта"
             className="field-control min-h-11 font-semibold"
             value={project.title}
-            placeholder="Название проекта"
+            placeholder={l('Название проекта', 'Project name')}
             onChange={(event) =>
               updateCard((current) => ({
                 ...current,
@@ -62,7 +66,10 @@ export default function ProjectsEditorPage() {
             aria-label="Описание проекта"
             className="field-control"
             value={project.description}
-            placeholder="Расскажите о задаче и результате"
+            placeholder={l(
+              'Расскажите о задаче и результате',
+              'Describe the challenge and outcome',
+            )}
             onChange={(event) =>
               updateCard((current) => ({
                 ...current,
@@ -72,6 +79,11 @@ export default function ProjectsEditorPage() {
               }))
             }
           />
+          {!project.title.trim() ? (
+            <p className="error-text m-0">
+              {l('Укажите название проекта', 'Enter a project name')}
+            </p>
+          ) : null}
           <label className="flex items-center gap-2 text-xs">
             <input
               type="checkbox"
@@ -85,7 +97,7 @@ export default function ProjectsEditorPage() {
                 }))
               }
             />
-            Показывать в визитке
+            {l('Показывать в визитке', 'Show on card')}
           </label>
           <div className="flex justify-end gap-1">
             <button
@@ -126,8 +138,13 @@ export default function ProjectsEditorPage() {
       ))}
       <ConfirmDialog
         open={Boolean(pendingDelete)}
-        title="Удалить проект?"
-        description="Проект исчезнет из редактора и публичной визитки."
+        title={l('Удалить проект?', 'Delete project?')}
+        description={l(
+          'Проект исчезнет из редактора и публичной визитки.',
+          'The project will be removed from the editor and public card.',
+        )}
+        confirmLabel={l('Удалить', 'Delete')}
+        cancelLabel={l('Отмена', 'Cancel')}
         onCancel={() => setPendingDelete(null)}
         onConfirm={() => {
           updateCard((current) => ({

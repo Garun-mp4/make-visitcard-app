@@ -6,8 +6,10 @@ import { Field } from '@/components/ui/field'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { moveItem } from '@/lib/utils'
 import { isSafeExternalUrl } from '@shared/schemas'
+import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function ContactsEditorPage() {
+  const l = useLocaleText()
   const { card, updateCard } = useCardStore()
   const action = card.primaryAction
   const addLink = () => {
@@ -29,11 +31,11 @@ export default function ContactsEditorPage() {
     }))
   }
   return (
-    <EditorShell title="Контакты">
+    <EditorShell title={l('Контакты', 'Contacts')}>
       <section className="stack-16">
-        <h2 className="heading-font m-0 text-lg">Главное действие</h2>
+        <h2 className="heading-font m-0 text-lg">{l('Главное действие', 'Primary action')}</h2>
         <Field
-          label="Текст кнопки"
+          label={l('Текст кнопки', 'Button label')}
           value={action.label}
           onChange={(event) =>
             updateCard((current) => ({
@@ -43,7 +45,7 @@ export default function ContactsEditorPage() {
           }
         />
         <Field
-          label="Ссылка или контакт"
+          label={l('Ссылка или контакт', 'Link or contact')}
           value={action.value}
           onChange={(event) =>
             updateCard((current) => ({
@@ -56,12 +58,12 @@ export default function ContactsEditorPage() {
       <section className="stack-12">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="heading-font m-0 text-lg">Ссылки</h2>
+            <h2 className="heading-font m-0 text-lg">{l('Ссылки', 'Links')}</h2>
             <p className="helper-text">{card.links.length} из 10</p>
           </div>
           <Button variant="secondary" onClick={addLink} disabled={card.links.length >= 10}>
             <Plus size={16} />
-            Добавить
+            {l('Добавить', 'Add')}
           </Button>
         </div>
         {card.links.map((link, index) => (
@@ -71,7 +73,7 @@ export default function ContactsEditorPage() {
                 className="field-control min-h-11 flex-1"
                 aria-label="Название ссылки"
                 value={link.label}
-                placeholder="Например, Портфолио"
+                placeholder={l('Например, Портфолио', 'For example, Portfolio')}
                 onChange={(event) =>
                   updateCard((current) => ({
                     ...current,
@@ -111,7 +113,12 @@ export default function ContactsEditorPage() {
               }
             />
             {link.url && !isSafeExternalUrl(link.url, import.meta.env.DEV) ? (
-              <p className="error-text m-0">Введите безопасную ссылку HTTPS, email или телефон</p>
+              <p className="error-text m-0">
+                {l(
+                  'Введите безопасную ссылку HTTPS, email или телефон',
+                  'Enter a safe HTTPS link, email, or phone number',
+                )}
+              </p>
             ) : null}
             <div className="flex justify-end gap-1">
               <button
@@ -153,6 +160,9 @@ export default function ContactsEditorPage() {
                 <Trash2 size={17} />
               </button>
             </div>
+            {!link.label.trim() ? (
+              <p className="error-text m-0">{l('Укажите название ссылки', 'Enter a link name')}</p>
+            ) : null}
           </article>
         ))}
       </section>
