@@ -186,10 +186,15 @@ test('published edits go live and unpublish is serialized', async ({ page }, tes
 
   await page.goto('/app/editor/appearance')
   await page.getByRole('button', { name: /Dark/ }).click()
+  await page.getByRole('button', { name: 'Акцент violet' }).click()
   await expect(page.getByText('Сохранено')).toBeVisible()
 
   await page.goto('/c/alexey')
   await expect(page.locator('[data-public-theme="dark"]')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Написать в Telegram' })).toHaveCSS(
+    'background-color',
+    'rgb(113, 83, 166)',
+  )
   await expect(page.getByText('Предпросмотр владельца')).toHaveCount(0)
 
   await page.goto('/app/editor/publish')

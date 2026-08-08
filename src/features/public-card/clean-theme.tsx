@@ -53,7 +53,7 @@ export function CleanTheme({
         <section className="grid gap-10 lg:grid-cols-[1.65fr_0.9fr] lg:items-center lg:gap-20">
           <div className="max-w-2xl">
             {card.appearance.showAvailability ? (
-              <p className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#25845f]">
+              <p className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
                 <Circle size={8} fill="currentColor" aria-hidden="true" />
                 {card.profile.availabilityText}
               </p>
@@ -77,6 +77,7 @@ export function CleanTheme({
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button
+                data-accent-surface="primary"
                 onClick={() => {
                   if (analyticsEnabled)
                     recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
@@ -97,15 +98,15 @@ export function CleanTheme({
               ) : null}
             </div>
           </div>
-          <div className="hidden aspect-square max-w-[360px] rounded-[24px] bg-[#dce9e2] p-8 lg:flex lg:flex-col lg:justify-between">
-            <div className="text-6xl font-medium text-[#1f6b4f]">
+          <div className="hidden aspect-square max-w-[360px] rounded-[24px] bg-[var(--accent-soft)] p-8 lg:flex lg:flex-col lg:justify-between">
+            <div className="text-6xl font-medium text-[var(--accent)]">
               {card.profile.displayName
                 .split(' ')
                 .map((part) => part[0])
                 .join('')
                 .slice(0, 2)}
             </div>
-            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#1f6b4f]">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
               {card.profile.location} · {card.profile.workFormat}
             </div>
           </div>
@@ -130,7 +131,7 @@ export function CleanTheme({
                 >
                   <h3 className="heading-font m-0 text-xl font-semibold">{service.title}</h3>
                   <p className="text-sm leading-relaxed text-[#666d64]">{service.description}</p>
-                  <div className="mt-5 text-sm font-semibold text-[#1f6b4f]">
+                  <div className="mt-5 text-sm font-semibold text-[var(--accent)]">
                     <ServicePrice card={card} index={index} /> · {service.durationText}
                   </div>
                 </article>

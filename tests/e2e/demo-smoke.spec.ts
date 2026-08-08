@@ -55,6 +55,33 @@ test('theme switching persists into the public card', async ({ page }, testInfo)
   }
 })
 
+test('all accent presets color the public card across themes', async ({ page }) => {
+  const cases = [
+    { accent: 'green', theme: 'Clean', themeId: 'clean', rgb: 'rgb(31, 107, 79)' },
+    { accent: 'orange', theme: 'Dark', themeId: 'dark', rgb: 'rgb(184, 91, 36)' },
+    { accent: 'blue', theme: 'Editorial', themeId: 'editorial', rgb: 'rgb(50, 103, 168)' },
+    { accent: 'violet', theme: 'Dark', themeId: 'dark', rgb: 'rgb(113, 83, 166)' },
+    { accent: 'red', theme: 'Clean', themeId: 'clean', rgb: 'rgb(169, 78, 78)' },
+  ] as const
+
+  for (const { accent, theme, themeId, rgb } of cases) {
+    await page.goto('/app/editor/appearance')
+    await page.getByRole('button', { name: new RegExp(theme) }).click()
+    await page.getByRole('button', { name: `Акцент ${accent}` }).click()
+    await expect(page.getByText('Сохранено')).toBeVisible()
+
+    await page.goto('/c/alexey')
+    const publicCard = page.locator(
+      `[data-public-theme="${themeId}"][data-public-accent="${accent}"]`,
+    )
+    await expect(publicCard).toBeVisible()
+    await expect(publicCard.locator('[data-accent-surface="primary"]')).toHaveCSS(
+      'background-color',
+      rgb,
+    )
+  }
+})
+
 test('switch thumb stays inside its track and animates between states', async ({ page }) => {
   await page.goto('/app/editor/appearance')
   const control = page.getByRole('switch', { name: 'Город' })

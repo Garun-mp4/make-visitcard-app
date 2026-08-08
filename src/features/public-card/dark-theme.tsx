@@ -33,7 +33,7 @@ export function DarkTheme({
       className="min-h-[100dvh] bg-[#111612] text-[#f0f3ef] [--surface:#171d19] [--surface-secondary:#1d251f] [--surface-elevated:#222c25] [--border:#303a33] [--border-strong:#465349] [--text-primary:#f0f3ef] [--text-secondary:#b4beb6] [--text-muted:#7f8c82]"
     >
       <header className="flex min-h-20 items-center justify-between border-b border-[#2b332d] px-5 font-mono text-[10px] uppercase tracking-[0.18em] lg:px-[5.5vw]">
-        <span className="text-[#dca56d]">AV / design + code</span>
+        <span className="text-[var(--accent)]">AV / design + code</span>
         <nav className="hidden gap-8 md:flex">
           <a href="#dark-work">{t('publicCard.projects')}</a>
           <a href="#dark-services">{t('publicCard.services')}</a>
@@ -44,7 +44,7 @@ export function DarkTheme({
       <main className="px-6 pb-20 pt-14 lg:px-[5.5vw] lg:pt-18">
         <section className="grid min-h-[430px] gap-12 lg:grid-cols-[1.4fr_0.8fr] lg:gap-24">
           <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#dca56d]">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--accent)]">
               {card.profile.profession}
             </p>
             <h1 className="heading-font my-6 max-w-3xl text-[clamp(3.3rem,8vw,6.2rem)] font-normal leading-[0.88] tracking-[-0.055em]">
@@ -54,7 +54,8 @@ export function DarkTheme({
               {card.profile.bio}
             </p>
             <Button
-              className="mt-5 min-w-64 rounded-lg bg-[#dca56d] font-mono text-xs uppercase tracking-[0.1em] text-[#17120e]"
+              data-accent-surface="primary"
+              className="mt-5 min-w-64 rounded-lg font-mono text-xs uppercase tracking-[0.1em]"
               onClick={() => {
                 if (analyticsEnabled)
                   recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
@@ -66,7 +67,7 @@ export function DarkTheme({
             </Button>
           </div>
           <div className="flex min-h-72 flex-col justify-between rounded-xl border border-[#384139] p-6 font-mono text-[10px] uppercase leading-6 text-[#b4beb6]">
-            <p className="flex items-center gap-2 text-[#73cfa1]">
+            <p className="flex items-center gap-2 text-[var(--accent)]">
               <Circle size={7} fill="currentColor" />
               Available / Aug 2026
             </p>
@@ -85,7 +86,7 @@ export function DarkTheme({
         </section>
         {projects.length > 0 ? (
           <section id="dark-work" className="mt-8">
-            <div className="mb-5 flex justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-[#dca56d]">
+            <div className="mb-5 flex justify-between font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--accent)]">
               <span>
                 {l('Избранные проекты', 'Selected work')} / 01–0{projects.length}
               </span>
@@ -114,7 +115,7 @@ export function DarkTheme({
             .filter((s) => s.enabled)
             .map((service) => (
               <article key={service.id} className="bg-[#171d19] p-6">
-                <div className="font-mono text-[10px] uppercase text-[#dca56d]">
+                <div className="font-mono text-[10px] uppercase text-[var(--accent)]">
                   {t('publicCard.services')}
                 </div>
                 <h2 className="heading-font text-xl">{service.title}</h2>

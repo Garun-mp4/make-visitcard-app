@@ -7,6 +7,7 @@ import { EditorialTheme } from '@/features/public-card/editorial-theme'
 import { LeadForm } from '@/features/public-card/lead-form'
 import { ProjectDialog } from '@/features/public-card/project-dialog'
 import { useTranslation } from 'react-i18next'
+import { accentStyle } from '@/lib/accent-preset'
 import { recordPublicEvent } from '@/services/public-analytics'
 
 export function PublicCardRenderer({
@@ -33,7 +34,12 @@ export function PublicCardRenderer({
     onLead: () => setLeadOpen(true),
   }
   return (
-    <div className="contents" data-public-theme={card.appearance.themeId}>
+    <div
+      className="contents"
+      data-public-theme={card.appearance.themeId}
+      data-public-accent={card.appearance.accentPreset}
+      style={accentStyle(card.appearance.accentPreset, card.appearance.themeId === 'dark')}
+    >
       {card.appearance.themeId === 'dark' ? (
         <DarkTheme {...common} />
       ) : card.appearance.themeId === 'editorial' ? (

@@ -20,7 +20,7 @@ export function PublicLinks({
       {links.map((link) => (
         <button
           key={link.id}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
           onClick={() => {
             if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'link_click', link.id)
             telegram.openLink(link.url)

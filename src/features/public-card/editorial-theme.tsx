@@ -43,7 +43,7 @@ export function EditorialTheme({
       <main className="px-6 pb-20 pt-14 lg:px-[5.5vw]">
         <section className="grid min-h-[470px] gap-12 lg:grid-cols-[1.45fr_0.85fr] lg:gap-28">
           <div>
-            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[#a94e32]">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
               Product design / Moscow
             </p>
             <h1 className="my-6 font-serif text-[clamp(3rem,7vw,5.5rem)] font-bold leading-[0.93] tracking-[-0.035em]">
@@ -66,7 +66,7 @@ export function EditorialTheme({
                   recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
                 telegram.openLink(card.primaryAction.value)
               }}
-              className="flex min-h-14 items-center justify-between border-t border-[#d7c8b2] pt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#a94e32]"
+              className="flex min-h-14 items-center justify-between border-t border-[#d7c8b2] pt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--accent)]"
             >
               {card.profile.availabilityText}
               <ArrowUpRight size={15} />
@@ -82,7 +82,7 @@ export function EditorialTheme({
               .filter((s) => s.enabled)
               .map((service, index) => (
                 <article key={service.id} className="border-b border-[#d7c8b2] py-5">
-                  <div className="font-serif italic text-[#a94e32]">
+                  <div className="font-serif italic text-[var(--accent)]">
                     {['I', 'II', 'III', 'IV'][index]}
                   </div>
                   <h3 className="font-serif text-2xl">{service.title}</h3>
@@ -114,8 +114,9 @@ export function EditorialTheme({
         {card.appearance.showContactForm ? (
           <section className="mt-16 border-y border-[#d7c8b2] py-8">
             <button
+              data-accent-surface="primary"
               onClick={onLead}
-              className="flex w-full items-center justify-between bg-[#a94e32] p-5 font-mono text-xs uppercase tracking-[0.14em] text-white"
+              className="flex w-full items-center justify-between bg-[var(--accent)] p-5 font-mono text-xs uppercase tracking-[0.14em] text-[var(--accent-contrast)] transition-colors hover:bg-[var(--accent-hover)]"
             >
               {t('publicCard.write')} <ArrowUpRight />
             </button>
