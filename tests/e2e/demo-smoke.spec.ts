@@ -55,6 +55,34 @@ test('theme switching persists into the public card', async ({ page }, testInfo)
   }
 })
 
+test('switch thumb stays inside its track and animates between states', async ({ page }) => {
+  await page.goto('/app/editor/appearance')
+  const control = page.getByRole('switch', { name: 'Город' })
+  const thumb = control.locator('span')
+
+  const expectThumbInsideTrack = async () => {
+    const trackBox = await control.boundingBox()
+    const thumbBox = await thumb.boundingBox()
+    expect(trackBox).not.toBeNull()
+    expect(thumbBox).not.toBeNull()
+    expect(thumbBox!.x).toBeGreaterThanOrEqual(trackBox!.x + 2)
+    expect(thumbBox!.x + thumbBox!.width).toBeLessThanOrEqual(trackBox!.x + trackBox!.width - 2)
+  }
+
+  await expect(control).toHaveAttribute('aria-checked', 'true')
+  await expectThumbInsideTrack()
+  await expect(thumb).toHaveCSS('transition-duration', '0.18s')
+
+  await control.click()
+  await expect(control).toHaveAttribute('aria-checked', 'false')
+  await expectThumbInsideTrack()
+
+  await control.focus()
+  await page.keyboard.press('Space')
+  await expect(control).toHaveAttribute('aria-checked', 'true')
+  await expectThumbInsideTrack()
+})
+
 test('unknown route renders a not-found state', async ({ page }) => {
   await page.goto('/not-found')
   await expect(page.getByRole('heading')).toContainText('не найдена')
