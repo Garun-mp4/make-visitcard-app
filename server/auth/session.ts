@@ -68,7 +68,7 @@ export function sessionCookie(token: string, secure: boolean): string {
     `${cookieName}=${encodeURIComponent(token)}`,
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
+    secure ? 'SameSite=None' : 'SameSite=Lax',
     `Max-Age=${sessionLifetimeSeconds}`,
     ...(secure ? ['Secure'] : []),
   ].join('; ')

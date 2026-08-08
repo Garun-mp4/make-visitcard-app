@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { createSessionToken, verifySessionToken } from './session.js'
+import { createSessionToken, sessionCookie, verifySessionToken } from './session.js'
 import { resetServerEnvForTests } from '../config/server-env.js'
 
 describe('signed sessions', () => {
@@ -21,5 +21,19 @@ describe('signed sessions', () => {
     resetServerEnvForTests()
     const token = createSessionToken('telegram:42')
     expect(() => verifySessionToken(`${token}x`)).toThrow('Сессия недействительна')
+  })
+
+  it('allows the production session cookie inside Telegram Web iframe', () => {
+    const cookie = sessionCookie('signed-token', true)
+
+    expect(cookie).toContain('SameSite=None')
+    expect(cookie).toContain('Secure')
+  })
+
+  it('keeps local development cookies compatible with HTTP', () => {
+    const cookie = sessionCookie('signed-token', false)
+
+    expect(cookie).toContain('SameSite=Lax')
+    expect(cookie).not.toContain('Secure')
   })
 })
