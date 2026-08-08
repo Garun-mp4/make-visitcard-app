@@ -281,7 +281,7 @@ export default function PublicationPage() {
 
   const preview = async () => {
     if (!published) return
-    if (await ensurePublicCardReady()) navigate(`/c/${slug}`)
+    if (await ensurePublicCardReady()) void navigate(`/c/${slug}`)
     else
       feedback.notify(
         l('Сначала исправьте несохранённые изменения', 'Fix unsaved changes first'),

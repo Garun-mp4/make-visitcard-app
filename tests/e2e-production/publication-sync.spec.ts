@@ -1,9 +1,54 @@
 import { expect, test } from '@playwright/test'
 
-import { demoCard } from '../../shared/demo-data'
+const timestamp = '2026-08-08T15:00:00.000Z'
+const publishedCard = {
+  ownerUid: 'demo_owner',
+  profile: {
+    displayName: 'Алексей Волков',
+    profession: 'Product designer',
+    bio: 'Создаю понятные цифровые продукты.',
+    avatarUrl: '',
+    location: 'Москва',
+    workFormat: 'hybrid',
+    availabilityStatus: 'available',
+    availabilityText: 'Доступен для проекта',
+  },
+  primaryAction: {
+    type: 'telegram',
+    label: 'Написать в Telegram',
+    value: 'https://t.me/alexey_cardly',
+    enabled: true,
+  },
+  skills: [],
+  links: [],
+  services: [],
+  projects: [],
+  appearance: {
+    themeId: 'clean',
+    accentPreset: 'green',
+    avatarShape: 'circle',
+    visibleSections: ['skills', 'services', 'projects', 'contacts', 'lead'],
+    showLocation: true,
+    showAvailability: true,
+    showServices: true,
+    showProjects: true,
+    showSkills: true,
+    showContactForm: true,
+  },
+  publication: {
+    slug: 'alexey',
+    published: true,
+    publishedAt: timestamp,
+    updatedAt: timestamp,
+  },
+  onboardingCompleted: true,
+  createdAt: timestamp,
+  updatedAt: timestamp,
+  lastPublishedAt: timestamp,
+}
 
 const owner = {
-  uid: demoCard.ownerUid,
+  uid: publishedCard.ownerUid,
   telegramId: '42',
   firstName: 'Алексей',
   lastName: 'Волков',
@@ -35,8 +80,8 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('published edits go live and unpublish is serialized', async ({ page }, testInfo) => {
-  let savedCard = structuredClone(demoCard)
-  let publicCard: typeof demoCard | null = structuredClone(demoCard)
+  let savedCard = structuredClone(publishedCard)
+  let publicCard: typeof publishedCard | null = structuredClone(publishedCard)
   let unpublishCount = 0
   let saveCount = 0
   const dashboard = {

@@ -7,7 +7,12 @@ import { demoCard } from '@shared/demo-data'
 import { ApiError } from '@/services/api-client'
 import PublicationPage from './publication-page'
 
-const state = vi.hoisted(() => ({ value: {} as Record<string, unknown> }))
+interface StoreMock {
+  unpublishCard: ReturnType<typeof vi.fn>
+  [key: string]: unknown
+}
+
+const state = vi.hoisted<{ value: StoreMock }>(() => ({ value: { unpublishCard: vi.fn() } }))
 const notify = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/card-store', () => ({ useCardStore: () => state.value }))

@@ -18,13 +18,13 @@ export default function OwnerHomePage() {
   const publicUrl = `${window.location.origin}/c/${card.publication.slug}`
   const withPublicCard = async (action: () => void) => {
     if (!card.publication.published) {
-      navigate('/app/editor/publish')
+      void navigate('/app/editor/publish')
       return
     }
     if (await ensurePublicCardReady()) action()
     else {
       feedback.notify('Публичная версия ещё не обновлена. Проверьте раздел публикации.', 'error')
-      navigate('/app/editor/publish')
+      void navigate('/app/editor/publish')
     }
   }
   return (
@@ -77,7 +77,9 @@ export default function OwnerHomePage() {
           <div className="grid grid-cols-3 gap-2">
             <Button
               className="px-2 text-xs"
-              onClick={() => void withPublicCard(() => navigate(`/c/${card.publication.slug}`))}
+              onClick={() =>
+                void withPublicCard(() => void navigate(`/c/${card.publication.slug}`))
+              }
             >
               <ExternalLink size={15} />
               {t('home.open')}

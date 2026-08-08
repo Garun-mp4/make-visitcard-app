@@ -18,7 +18,7 @@ export default function ProfilePage() {
   const url = `${window.location.origin}/c/${card.publication.slug}`
   const withPublicCard = async (action: () => void) => {
     if (!card.publication.published) {
-      navigate('/app/editor/publish')
+      void navigate('/app/editor/publish')
       return
     }
     if (await ensurePublicCardReady()) action()
@@ -30,7 +30,7 @@ export default function ProfilePage() {
         ),
         'error',
       )
-      navigate('/app/editor/publish')
+      void navigate('/app/editor/publish')
     }
   }
   return (
@@ -102,7 +102,7 @@ export default function ProfilePage() {
           [
             ExternalLink,
             t('profile.publicCard'),
-            () => void withPublicCard(() => navigate(`/c/${card.publication.slug}`)),
+            () => void withPublicCard(() => void navigate(`/c/${card.publication.slug}`)),
           ],
           [
             Copy,

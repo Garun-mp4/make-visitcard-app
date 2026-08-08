@@ -1,16 +1,16 @@
 import { cardDraftSchema, publishableCardSchema } from '../../shared/schemas.js'
 import type { CardDraft, CardSaveResult, PublicSyncStatus } from '../../shared/types.js'
-import { sanitizePublicSnapshot, type PublicSnapshot } from './public-snapshot.js'
+import { sanitizePublicSnapshot } from './public-snapshot.js'
 
 export interface CurrentCardRecord {
   card: CardDraft
   slug: string | null
   published: boolean
-  publicData: unknown | null
+  publicData: unknown
 }
 
 export interface PreparedCardSave extends CardSaveResult {
-  publicData: PublicSnapshot | unknown | null
+  publicData: unknown
 }
 
 function issuePath(path: PropertyKey[]): string {

@@ -28,7 +28,7 @@ interface JsonRow {
 interface CardRecordRow extends JsonRow {
   slug: string | null
   published: boolean
-  public_data: unknown | null
+  public_data: unknown
 }
 
 interface UserRow {
