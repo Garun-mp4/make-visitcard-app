@@ -14,10 +14,11 @@ describe('public analytics', () => {
   it.each(['primary_cta_click', 'link_click', 'project_open', 'share'] as const)(
     'records %s without blocking navigation',
     (type) => {
-      recordPublicEvent('ada', type)
+      recordPublicEvent('ada', type, 'target-1')
       expect(apiRequest).toHaveBeenCalledWith('/api/public/cards/ada/events', {
         method: 'POST',
-        body: JSON.stringify({ type, source: 'telegram' }),
+        body: JSON.stringify({ type, source: 'telegram', targetId: 'target-1' }),
+        keepalive: true,
       })
     },
   )

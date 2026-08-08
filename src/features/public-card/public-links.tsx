@@ -22,7 +22,7 @@ export function PublicLinks({
           key={link.id}
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm"
           onClick={() => {
-            if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'link_click')
+            if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'link_click', link.id)
             telegram.openLink(link.url)
           }}
         >

@@ -56,7 +56,8 @@ export function DarkTheme({
             <Button
               className="mt-5 min-w-64 rounded-lg bg-[#dca56d] font-mono text-xs uppercase tracking-[0.1em] text-[#17120e]"
               onClick={() => {
-                if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                if (analyticsEnabled)
+                  recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
                 telegram.openLink(card.primaryAction.value)
               }}
             >

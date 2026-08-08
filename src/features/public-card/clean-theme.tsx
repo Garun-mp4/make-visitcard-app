@@ -79,7 +79,7 @@ export function CleanTheme({
               <Button
                 onClick={() => {
                   if (analyticsEnabled)
-                    recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                    recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
                   telegram.openLink(card.primaryAction.value)
                 }}
               >

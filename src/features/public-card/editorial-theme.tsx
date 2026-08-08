@@ -62,7 +62,8 @@ export function EditorialTheme({
             </p>
             <button
               onClick={() => {
-                if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'primary_cta_click')
+                if (analyticsEnabled)
+                  recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
                 telegram.openLink(card.primaryAction.value)
               }}
               className="flex min-h-14 items-center justify-between border-t border-[#d7c8b2] pt-4 font-mono text-[10px] uppercase tracking-[0.16em] text-[#a94e32]"

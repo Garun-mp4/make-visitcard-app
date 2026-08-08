@@ -27,7 +27,7 @@ export function PublicCardRenderer({
     analyticsEnabled,
     publicUrl,
     onProject: (value: Project) => {
-      if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'project_open')
+      if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'project_open', value.id)
       setProject(value)
     },
     onLead: () => setLeadOpen(true),

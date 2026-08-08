@@ -25,7 +25,7 @@ export function PublicActions({
   const text = useLocaleText()
   const share = async () => {
     onShare?.()
-    if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'share')
+    if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'share', 'share')
     const result = await shareOrCopy({
       title: card.profile.displayName,
       text: card.profile.profession,
