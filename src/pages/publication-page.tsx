@@ -1,9 +1,9 @@
 import { AlertTriangle, CheckCircle2, Copy, Download, Eye, Share2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { slugSchema } from '@shared/schemas'
+import { publishableCardSchema, slugSchema } from '@shared/schemas'
 import type { SaveError } from '@/app/card-store'
 import { useCardStore } from '@/app/card-store'
 import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
@@ -212,6 +212,27 @@ export default function PublicationPage() {
   const published = card.publication.published
   const publishing = publicationOperation === 'publishing'
   const unpublishing = publicationOperation === 'unpublishing'
+  const publicationValidation = useMemo(
+    () =>
+      publishableCardSchema.safeParse({
+        ...card,
+        publication: { ...card.publication, slug, published: true },
+      }),
+    [card, slug],
+  )
+  const contentInvalidPaths = useMemo(
+    () =>
+      publicationValidation.success
+        ? []
+        : [
+            ...new Set(
+              publicationValidation.error.issues
+                .map((issue) => issue.path.map(String).join('.'))
+                .filter((path) => path !== 'publication.slug'),
+            ),
+          ],
+    [publicationValidation],
+  )
 
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current)
@@ -253,7 +274,7 @@ export default function PublicationPage() {
     )
 
   const publish = async () => {
-    if (slugState !== 'available' || publishing) return
+    if (slugState !== 'available' || publishing || !publicationValidation.success) return
     try {
       await publishCard(slug)
       feedback.notify(l('Визитка опубликована', 'Card published'), 'success')
@@ -337,6 +358,20 @@ export default function PublicationPage() {
         {l('Все сохранённые изменения опубликованы.', 'All saved changes are public.')}
       </SyncNotice>
     )
+  ) : contentInvalidPaths.length ? (
+    <SyncNotice
+      tone="error"
+      action={
+        <button
+          className="shrink-0 font-semibold underline"
+          onClick={() => navigate(editorRouteForInvalidPath(contentInvalidPaths[0]))}
+        >
+          {l('Исправить', 'Fix')}
+        </button>
+      }
+    >
+      {l('Исправьте данные визитки перед публикацией.', 'Fix the card details before publishing.')}
+    </SyncNotice>
   ) : null
 
   return (
@@ -453,7 +488,7 @@ export default function PublicationPage() {
       ) : (
         <Button
           fullWidth
-          disabled={publishing || slugState !== 'available'}
+          disabled={publishing || slugState !== 'available' || !publicationValidation.success}
           onClick={() => void publish()}
         >
           {publishing ? l('Публикуем…', 'Publishing…') : l('Опубликовать визитку', 'Publish card')}

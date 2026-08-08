@@ -42,4 +42,40 @@ describe('draft and publication schemas', () => {
     expect(cardDraftSchema.safeParse(draft).success).toBe(true)
     expect(publishableCardSchema.safeParse(draft).success).toBe(false)
   })
+
+  it('persists unfinished URLs while keeping them out of publication', () => {
+    const draft = {
+      ...createInitialCard(owner, '2026-08-08T08:00:00.000Z'),
+      profile: {
+        ...createInitialCard(owner, '2026-08-08T08:00:00.000Z').profile,
+        avatarUrl: 'https://',
+      },
+      links: [
+        {
+          id: 'portfolio',
+          type: 'website' as const,
+          label: 'Portfolio',
+          url: 'https://behance.',
+          enabled: true,
+          public: true,
+          position: 0,
+        },
+      ],
+      projects: [
+        {
+          id: 'project-1',
+          title: 'Project',
+          category: '',
+          description: '',
+          coverUrl: 'https://',
+          projectUrl: 'https://example.',
+          enabled: true,
+          position: 0,
+        },
+      ],
+    }
+
+    expect(cardDraftSchema.safeParse(draft).success).toBe(true)
+    expect(publishableCardSchema.safeParse(draft).success).toBe(false)
+  })
 })

@@ -112,4 +112,37 @@ describe('PublicationPage', () => {
       '"state":{"returnTo":"/app/editor/publish"}',
     )
   })
+
+  it('explains invalid draft fields before publication and links to their editor', () => {
+    state.value = {
+      ...state.value,
+      card: {
+        ...demoCard,
+        links: [
+          ...demoCard.links,
+          {
+            id: 'unfinished-portfolio',
+            type: 'website',
+            label: 'Portfolio',
+            url: 'https://',
+            enabled: true,
+            public: true,
+            position: demoCard.links.length,
+          },
+        ],
+        publication: { ...demoCard.publication, slug: 'kizlyar', published: false },
+      },
+      publicSync: { state: 'not_published', syncedAt: null, invalidPaths: [] },
+    }
+
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Исправьте данные визитки перед публикацией.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Опубликовать визитку' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Исправить' })).toBeInTheDocument()
+  })
 })

@@ -57,6 +57,9 @@ export const safeUrlSchema = z
     'Небезопасная ссылка',
   )
 
+const draftUrlSchema = z.string().trim().max(2048)
+const optionalSafeUrlSchema = z.union([z.literal(''), safeUrlSchema])
+
 export const availabilitySchema = z.enum(['available', 'busy', 'open_to_offers', 'unavailable'])
 export const workFormatSchema = z.enum(['remote', 'hybrid', 'office', 'flexible'])
 export const themeIdSchema = z.enum(['clean', 'dark', 'editorial'])
@@ -73,7 +76,7 @@ export const profileSchema = z.object({
   displayName: z.string().trim().max(60),
   profession: z.string().trim().max(80),
   bio: z.string().trim().max(300),
-  avatarUrl: z.union([z.literal(''), safeUrlSchema]),
+  avatarUrl: draftUrlSchema,
   location: z.string().trim().max(80),
   workFormat: workFormatSchema,
   availabilityStatus: availabilitySchema,
@@ -109,7 +112,7 @@ export const linkSchema = z.object({
     'custom',
   ]),
   label: z.string().trim().max(60),
-  url: z.union([z.literal(''), safeUrlSchema]),
+  url: draftUrlSchema,
   enabled: z.boolean(),
   public: z.boolean(),
   position: z.number().int().nonnegative(),
@@ -132,8 +135,8 @@ export const projectSchema = z.object({
   title: z.string().trim().max(100),
   category: z.string().trim().max(60),
   description: z.string().trim().max(400),
-  coverUrl: z.union([z.literal(''), safeUrlSchema]),
-  projectUrl: z.union([z.literal(''), safeUrlSchema]),
+  coverUrl: draftUrlSchema,
+  projectUrl: draftUrlSchema,
   enabled: z.boolean(),
   position: z.number().int().nonnegative(),
 })
@@ -177,6 +180,7 @@ export const cardDraftSchema = z.object({
 const publishableProfileSchema = profileSchema.extend({
   displayName: z.string().trim().min(2).max(60),
   profession: z.string().trim().min(2).max(80),
+  avatarUrl: optionalSafeUrlSchema,
 })
 
 const publishablePrimaryActionSchema = primaryActionSchema.extend({
@@ -200,6 +204,8 @@ const publishableServiceSchema = serviceSchema.extend({
 
 const publishableProjectSchema = projectSchema.extend({
   title: z.string().trim().min(2).max(100),
+  coverUrl: optionalSafeUrlSchema,
+  projectUrl: optionalSafeUrlSchema,
 })
 
 export const publishableCardSchema = cardDraftSchema.superRefine((card, context) => {
