@@ -11,11 +11,28 @@ import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
-  const { card, owner, preferences, setPreferences } = useCardStore()
+  const { card, ensurePublicCardReady, owner, preferences, setPreferences } = useCardStore()
   const feedback = useFeedback()
   const { t } = useTranslation()
   const l = useLocaleText()
   const url = `${window.location.origin}/c/${card.publication.slug}`
+  const withPublicCard = async (action: () => void) => {
+    if (!card.publication.published) {
+      navigate('/app/editor/publish')
+      return
+    }
+    if (await ensurePublicCardReady()) action()
+    else {
+      feedback.notify(
+        l(
+          'Публичная версия ещё не обновлена. Проверьте публикацию.',
+          'The public version is not updated yet. Check publication.',
+        ),
+        'error',
+      )
+      navigate('/app/editor/publish')
+    }
+  }
   return (
     <main className="owner-mobile-content lg:max-w-[760px] lg:py-8">
       <header className="page-header">
@@ -85,22 +102,20 @@ export default function ProfilePage() {
           [
             ExternalLink,
             t('profile.publicCard'),
-            () =>
-              navigate(
-                card.publication.published ? `/c/${card.publication.slug}` : '/app/editor/publish',
-              ),
+            () => void withPublicCard(() => navigate(`/c/${card.publication.slug}`)),
           ],
           [
             Copy,
             t('profile.copyLink'),
             () =>
-              card.publication.published
-                ? void copyText(url).then((copied) =>
+              void withPublicCard(
+                () =>
+                  void copyText(url).then((copied) =>
                     copied
                       ? feedback.notify(t('feedback.copied'), 'success')
                       : feedback.revealLink(t('profile.copyLink'), url),
-                  )
-                : navigate('/app/editor/publish'),
+                  ),
+              ),
           ],
         ].map(([Icon, label, action]) => {
           const I = Icon as typeof Languages

@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
-import type { PropsWithChildren } from 'react'
+import type { PropsWithChildren, ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 
 import { useCardStore } from '@/app/card-store'
@@ -9,7 +9,12 @@ import { cn } from '@/lib/utils'
 import { useTelegramBack } from '@/hooks/use-telegram'
 import { useLocaleText } from '@/i18n/use-locale-text'
 
-export function EditorShell({ title, children }: PropsWithChildren<{ title: string }>) {
+export function EditorShell({
+  title,
+  children,
+  desktopAside,
+  mobileFooter,
+}: PropsWithChildren<{ title: string; desktopAside?: ReactNode; mobileFooter?: ReactNode }>) {
   const l = useLocaleText()
   const sections = [
     ['/app/editor/basic', l('Основное', 'Basic')],
@@ -58,20 +63,25 @@ export function EditorShell({ title, children }: PropsWithChildren<{ title: stri
             ))}
           </nav>
           <section className="owner-mobile-content !pb-28 lg:!max-w-none lg:!px-0 lg:!pb-0">
-            <div className="surface grid gap-5 rounded-2xl p-5 lg:min-h-[760px] lg:p-6">
+            <div className="surface grid min-w-0 content-start gap-5 rounded-2xl p-5 lg:min-h-[760px] lg:p-6">
               {children}
             </div>
           </section>
           <aside className="hidden min-h-[760px] rounded-2xl bg-[#e9ece8] p-6 lg:block">
-            <div className="mb-4 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
-              {l('Живой предпросмотр · 390 px', 'Live preview · 390 px')}
-            </div>
-            <div className="mx-auto max-h-[680px] max-w-[350px] overflow-y-auto border border-[var(--border)]">
-              <MiniCardPreview card={card} />
-            </div>
+            {desktopAside ?? (
+              <>
+                <div className="mb-4 text-center font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                  {l('Живой предпросмотр · 390 px', 'Live preview · 390 px')}
+                </div>
+                <div className="mx-auto max-h-[680px] max-w-[350px] overflow-y-auto border border-[var(--border)]">
+                  <MiniCardPreview card={card} />
+                </div>
+              </>
+            )}
           </aside>
         </div>
       </div>
+      {mobileFooter}
     </main>
   )
 }

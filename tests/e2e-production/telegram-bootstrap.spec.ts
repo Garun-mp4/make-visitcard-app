@@ -118,7 +118,10 @@ test('Telegram bootstrap creates and persists a clean onboarding draft', async (
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ card: savedCard }),
+        body: JSON.stringify({
+          card: savedCard,
+          publicSync: { state: 'not_published', syncedAt: null, invalidPaths: [] },
+        }),
       })
     } else
       await route.fulfill({

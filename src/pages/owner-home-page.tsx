@@ -12,10 +12,21 @@ import { useTranslation } from 'react-i18next'
 
 export default function OwnerHomePage() {
   const navigate = useNavigate()
-  const { card, saveStatus } = useCardStore()
+  const { card, ensurePublicCardReady, publicSync, saveStatus } = useCardStore()
   const feedback = useFeedback()
   const { t } = useTranslation()
   const publicUrl = `${window.location.origin}/c/${card.publication.slug}`
+  const withPublicCard = async (action: () => void) => {
+    if (!card.publication.published) {
+      navigate('/app/editor/publish')
+      return
+    }
+    if (await ensurePublicCardReady()) action()
+    else {
+      feedback.notify('Публичная версия ещё не обновлена. Проверьте раздел публикации.', 'error')
+      navigate('/app/editor/publish')
+    }
+  }
   return (
     <main className="owner-mobile-content lg:max-w-[1180px] lg:py-8">
       <header className="page-header">
@@ -43,19 +54,22 @@ export default function OwnerHomePage() {
               aria-label="Скопировать ссылку"
               className="grid size-11 place-items-center text-[var(--accent)]"
               onClick={() =>
-                card.publication.published
-                  ? void copyText(publicUrl).then((copied) =>
+                void withPublicCard(
+                  () =>
+                    void copyText(publicUrl).then((copied) =>
                       copied
                         ? feedback.notify(t('feedback.copied'), 'success')
                         : feedback.revealLink(t('profile.copyLink'), publicUrl),
-                    )
-                  : navigate('/app/editor/publish')
+                    ),
+                )
               }
             >
               <Copy size={19} />
             </button>
           </div>
-          {saveStatus === 'dirty' ? (
+          {saveStatus === 'dirty' ||
+          saveStatus === 'saving' ||
+          publicSync.state === 'pending_validation' ? (
             <div className="rounded-xl bg-[var(--warning-soft)] p-4 text-sm text-[var(--warning)]">
               Есть изменения, которые ещё не видят посетители.
             </div>
@@ -63,13 +77,7 @@ export default function OwnerHomePage() {
           <div className="grid grid-cols-3 gap-2">
             <Button
               className="px-2 text-xs"
-              onClick={() =>
-                navigate(
-                  card.publication.published
-                    ? `/c/${card.publication.slug}`
-                    : '/app/editor/publish',
-                )
-              }
+              onClick={() => void withPublicCard(() => navigate(`/c/${card.publication.slug}`))}
             >
               <ExternalLink size={15} />
               {t('home.open')}
@@ -86,16 +94,17 @@ export default function OwnerHomePage() {
               className="px-2 text-xs"
               variant="secondary"
               onClick={() =>
-                card.publication.published
-                  ? void shareOrCopy({ title: card.profile.displayName, url: publicUrl }).then(
+                void withPublicCard(
+                  () =>
+                    void shareOrCopy({ title: card.profile.displayName, url: publicUrl }).then(
                       (result) =>
                         result === 'copied'
                           ? feedback.notify(t('feedback.copied'), 'success')
                           : result === 'manual'
                             ? feedback.revealLink(t('common.share'), publicUrl)
                             : feedback.notify(t('feedback.shareOpened'), 'success'),
-                    )
-                  : navigate('/app/editor/publish')
+                    ),
+                )
               }
             >
               <Share2 size={15} />

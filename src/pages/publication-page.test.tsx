@@ -1,0 +1,87 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { demoCard } from '@shared/demo-data'
+import { ApiError } from '@/services/api-client'
+import PublicationPage from './publication-page'
+
+const state = vi.hoisted(() => ({ value: {} as Record<string, unknown> }))
+const notify = vi.hoisted(() => vi.fn())
+
+vi.mock('@/app/card-store', () => ({ useCardStore: () => state.value }))
+vi.mock('@/components/feedback/feedback-provider', () => ({
+  useFeedback: () => ({ notify, revealLink: vi.fn() }),
+}))
+
+describe('PublicationPage', () => {
+  beforeEach(() => {
+    notify.mockReset()
+    state.value = {
+      card: demoCard,
+      publicSync: { state: 'synced', syncedAt: demoCard.lastPublishedAt, invalidPaths: [] },
+      saveStatus: 'saved',
+      saveError: null,
+      saveNow: vi.fn().mockResolvedValue(undefined),
+      ensurePublicCardReady: vi.fn().mockResolvedValue(true),
+      publicationOperation: 'idle',
+      publicationError: null,
+      publishCard: vi.fn().mockResolvedValue(undefined),
+      unpublishCard: vi.fn().mockResolvedValue(undefined),
+      updateCard: vi.fn(),
+    }
+  })
+
+  it('locks the slug of a published card and confirms unpublishing once', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByRole('textbox', { name: /Адрес визитки/ })).not.toBeInTheDocument()
+    expect(screen.getAllByText(/\/c\/alexey/).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: 'Снять с публикации' }))
+    await user.click(screen.getByRole('button', { name: /^Снять$/ }))
+
+    expect(state.value.unpublishCard).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows a clear loading state while the card is being unpublished', () => {
+    state.value = { ...state.value, publicationOperation: 'unpublishing' }
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('button', { name: 'Снять с публикации' })).toBeDisabled()
+  })
+
+  it('reports an unpublish timeout with its request id', async () => {
+    const user = userEvent.setup()
+    state.value = {
+      ...state.value,
+      unpublishCard: vi.fn().mockRejectedValue(
+        new ApiError(408, {
+          code: 'request_timeout',
+          message: 'Сервер не ответил вовремя',
+          requestId: 'client-timeout',
+        }),
+      ),
+    }
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Снять с публикации' }))
+    await user.click(screen.getByRole('button', { name: /^Снять$/ }))
+
+    expect(notify).toHaveBeenCalledWith('Сервер не ответил вовремя · client-timeout', 'error')
+  })
+})

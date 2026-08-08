@@ -6,6 +6,8 @@ interface ConfirmDialogProps {
   description: string
   confirmLabel?: string
   cancelLabel?: string
+  busy?: boolean
+  busyLabel?: string
   onConfirm(): void
   onCancel(): void
 }
@@ -16,6 +18,8 @@ export function ConfirmDialog({
   description,
   confirmLabel = 'Удалить',
   cancelLabel = 'Отмена',
+  busy = false,
+  busyLabel,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -23,7 +27,9 @@ export function ConfirmDialog({
   return (
     <div
       className="fixed inset-0 z-50 grid place-items-end bg-[#10120f99] p-3 md:place-items-center"
-      onMouseDown={onCancel}
+      onMouseDown={() => {
+        if (!busy) onCancel()
+      }}
     >
       <section
         role="alertdialog"
@@ -40,11 +46,11 @@ export function ConfirmDialog({
           {description}
         </p>
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={onCancel}>
+          <Button variant="secondary" disabled={busy} onClick={onCancel}>
             {cancelLabel}
           </Button>
-          <Button variant="danger" onClick={onConfirm}>
-            {confirmLabel}
+          <Button variant="danger" disabled={busy} aria-busy={busy} onClick={onConfirm}>
+            {busy ? (busyLabel ?? confirmLabel) : confirmLabel}
           </Button>
         </div>
       </section>

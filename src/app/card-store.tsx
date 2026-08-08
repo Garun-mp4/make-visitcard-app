@@ -201,6 +201,7 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
     setCard(result.card)
     setPublicSync(result.publicSync)
     setSaveError(null)
+    setPublicationError(null)
     setSaveStatus('saved')
   }, [])
 
@@ -221,7 +222,12 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
         setPublicationError(null)
         try {
           await saveNow()
-          if (saveErrorRef.current) throw new Error(saveErrorRef.current.message)
+          if (saveErrorRef.current)
+            throw new ApiError(503, {
+              code: 'save_before_publication_failed',
+              message: saveErrorRef.current.message,
+              requestId: saveErrorRef.current.requestId ?? '',
+            })
           const current = cardRef.current
           if (!current) throw new Error('Card is not ready')
           let result: CardSaveResult
@@ -256,9 +262,10 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
           applyServerResult(result)
         } catch (error) {
           const publicationError =
-            error instanceof ApiError
+            saveErrorRef.current ??
+            (error instanceof ApiError
               ? { message: error.message, requestId: error.payload.requestId }
-              : { message: error instanceof Error ? error.message : 'Publication failed' }
+              : { message: error instanceof Error ? error.message : 'Publication failed' })
           setPublicationError(publicationError)
           throw error
         } finally {
