@@ -12,7 +12,9 @@ const owner = {
   platform: 'Telegram Mini App',
 }
 
-test('Telegram bootstrap creates and persists a clean onboarding draft', async ({ page }) => {
+test('Telegram bootstrap creates and persists a clean onboarding draft', async ({
+  page,
+}, testInfo) => {
   let savedCard = {
     ownerUid: owner.uid,
     profile: {
@@ -135,7 +137,42 @@ test('Telegram bootstrap creates and persists a clean onboarding draft', async (
   await expect(
     page.getByRole('heading', { name: 'Ваша профессиональная визитка — внутри Telegram' }),
   ).toBeVisible()
+  const onboardingShell = page.locator('main')
+  if (testInfo.project.name === 'telegram-mobile') {
+    for (const width of [320, 390, 420]) {
+      await page.setViewportSize({ width, height: 844 })
+      await expect
+        .poll(() =>
+          onboardingShell.evaluate((element) => ({
+            clientWidth: document.documentElement.clientWidth,
+            scrollWidth: document.documentElement.scrollWidth,
+            shellLeft: element.getBoundingClientRect().left,
+            shellRight:
+              document.documentElement.clientWidth - element.getBoundingClientRect().right,
+          })),
+        )
+        .toEqual({ clientWidth: width, scrollWidth: width, shellLeft: 0, shellRight: 0 })
+    }
+    await page.setViewportSize({ width: 320, height: 844 })
+  }
+  await expect
+    .poll(() =>
+      onboardingShell.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return { left: style.paddingLeft, right: style.paddingRight }
+      }),
+    )
+    .toEqual({ left: '20px', right: '20px' })
   await page.getByRole('button', { name: 'Продолжить' }).click()
+  await expect(page.getByRole('heading', { name: 'Расскажите о себе' })).toBeVisible()
+  await expect
+    .poll(() =>
+      onboardingShell.evaluate((element) => {
+        const style = getComputedStyle(element)
+        return { left: style.paddingLeft, right: style.paddingRight }
+      }),
+    )
+    .toEqual({ left: '20px', right: '20px' })
   await page.getByLabel('Имя').fill('Garun QA')
   await expect.poll(() => savedCard.profile.displayName).toBe('Garun QA')
   expect(savedCard.profile.displayName).toBe('Garun QA')

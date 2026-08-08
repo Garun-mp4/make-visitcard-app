@@ -118,6 +118,11 @@ a[href] {
   padding-left: var(--tg-safe-left);
 }
 
+.app-shell.onboarding-shell {
+  padding-right: calc(20px + var(--tg-safe-right));
+  padding-left: calc(20px + var(--tg-safe-left));
+}
+
 .owner-mobile-content {
   width: 100%;
   max-width: 430px;

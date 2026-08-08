@@ -159,7 +159,7 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
           : true
 
   return (
-    <main className="app-shell mx-auto flex min-h-[100dvh] w-full max-w-[430px] flex-col px-5 pb-[max(20px,var(--tg-safe-bottom))]">
+    <main className="app-shell onboarding-shell mx-auto flex min-h-[100dvh] w-full max-w-[430px] flex-col pb-[max(20px,var(--tg-safe-bottom))]">
       <header className="flex min-h-[72px] items-center justify-between">
         <button
           aria-label={l('Назад', 'Back')}
