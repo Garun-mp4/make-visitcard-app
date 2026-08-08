@@ -1,13 +1,4 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  CalendarDays,
-  Check,
-  Mail,
-  Phone,
-  Plus,
-  Send,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, Mail, Phone, Plus, Send } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -55,9 +46,9 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
     mode === 'revisit' ? 0 : Number(sessionStorage.getItem(storageKey) ?? 0),
   )
   const [skill, setSkill] = useState('')
-  const [slugState, setSlugState] = useState<
-    'idle' | 'checking' | 'available' | 'unavailable'
-  >('idle')
+  const [slugState, setSlugState] = useState<'idle' | 'checking' | 'available' | 'unavailable'>(
+    'idle',
+  )
   const english = document.documentElement.lang.startsWith('en')
 
   useEffect(() => {
@@ -162,8 +153,7 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
     step === 1
       ? card.profile.displayName.trim().length >= 2 && card.profile.profession.trim().length >= 2
       : step === 2
-        ? card.primaryAction.label.trim().length >= 2 &&
-          card.primaryAction.value.trim().length >= 2
+        ? card.primaryAction.label.trim().length >= 2 && card.primaryAction.value.trim().length >= 2
         : step === 5
           ? slugState === 'available'
           : true
@@ -304,7 +294,9 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
         {step === 2 ? (
           <div className="stack-16">
             <div>
-              <h1 className="page-title">{l('Выберите главное действие', 'Choose a primary action')}</h1>
+              <h1 className="page-title">
+                {l('Выберите главное действие', 'Choose a primary action')}
+              </h1>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
                 {l(
                   'Эта кнопка будет самой заметной на публичной визитке.',
@@ -432,7 +424,9 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
         {step === 4 ? (
           <div className="stack-20">
             <div>
-              <h1 className="page-title">{l('Выберите характер визитки', 'Choose your card style')}</h1>
+              <h1 className="page-title">
+                {l('Выберите характер визитки', 'Choose your card style')}
+              </h1>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
                 {l(
                   'Тему и акцент можно изменить после публикации.',
@@ -460,7 +454,11 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
             </div>
             <div>
               <h2 className="heading-font mb-3 mt-0 text-base">{l('Акцент', 'Accent')}</h2>
-              <div className="flex gap-3" role="group" aria-label={l('Цвет акцента', 'Accent color')}>
+              <div
+                className="flex gap-3"
+                role="group"
+                aria-label={l('Цвет акцента', 'Accent color')}
+              >
                 {accentOptions.map((option) => (
                   <button
                     key={option.id}
@@ -474,7 +472,10 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
                       }))
                     }
                   >
-                    <span className="size-8 rounded-full" style={{ backgroundColor: option.color }} />
+                    <span
+                      className="size-8 rounded-full"
+                      style={{ backgroundColor: option.color }}
+                    />
                   </button>
                 ))}
               </div>
@@ -485,10 +486,15 @@ export default function OnboardingPage({ mode = 'initial' }: { mode?: Onboarding
         {step === 5 ? (
           <div className="stack-20">
             <div>
-              <h1 className="page-title">{l('Последний шаг — адрес визитки', 'Final step — card address')}</h1>
+              <h1 className="page-title">
+                {l('Последний шаг — адрес визитки', 'Final step — card address')}
+              </h1>
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
                 {card.publication.published
-                  ? l('Опубликованный адрес остаётся за вами.', 'Your published address stays reserved.')
+                  ? l(
+                      'Опубликованный адрес остаётся за вами.',
+                      'Your published address stays reserved.',
+                    )
                   : l('Выберите короткий уникальный адрес.', 'Choose a short, unique address.')}
               </p>
             </div>

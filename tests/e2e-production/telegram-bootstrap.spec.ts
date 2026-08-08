@@ -133,9 +133,9 @@ test('Telegram bootstrap creates and persists a clean onboarding draft', async (
 
   await page.goto('/')
   await expect(
-    page.getByRole('heading', { name: 'Визитка, которая работает за вас' }),
+    page.getByRole('heading', { name: 'Ваша профессиональная визитка — внутри Telegram' }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Начать' }).click()
+  await page.getByRole('button', { name: 'Продолжить' }).click()
   await page.getByLabel('Имя').fill('Garun QA')
   await expect.poll(() => savedCard.profile.displayName).toBe('Garun QA')
   expect(savedCard.profile.displayName).toBe('Garun QA')
