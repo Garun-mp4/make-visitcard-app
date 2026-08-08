@@ -5,6 +5,7 @@ import { createInitialCard } from '../../shared/initial-card.js'
 import type {
   AnalyticsEvent,
   CardDraft,
+  CardSaveResult,
   CardStats,
   CardView,
   LeadInput,
@@ -16,11 +17,18 @@ import type {
   TelegramUser,
 } from '../../shared/types.js'
 import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
+import { prepareCardSave } from '../cards/card-save.js'
 import { AppError } from '../utils/app-error.js'
 import { database } from './client.js'
 
 interface JsonRow {
   data: unknown
+}
+
+interface CardRecordRow extends JsonRow {
+  slug: string | null
+  published: boolean
+  public_data: unknown | null
 }
 
 interface UserRow {
@@ -155,34 +163,58 @@ export async function getOrCreateCard(owner: OwnerProfile): Promise<CardDraft> {
   return (await getCard(owner.uid)) ?? card
 }
 
-export async function saveCard(uid: string, input: CardDraft): Promise<CardDraft> {
+export async function saveCard(uid: string, input: CardDraft): Promise<CardSaveResult> {
   const sql = await database()
-  const now = new Date().toISOString()
-  const card = cardDraftSchema.parse({ ...input, ownerUid: uid, updatedAt: now })
-  try {
-    await sql`
-      INSERT INTO cardly_cards (owner_uid, data, slug, published, public_data, updated_at)
-      VALUES (
-        ${uid}, ${JSON.stringify(card)}::jsonb,
-        ${card.publication.slug || null}, FALSE, NULL,
-        NOW()
+  const parsedInput = cardDraftSchema.parse({ ...input, ownerUid: uid })
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const rows = rowsOf<CardRecordRow>(
+      await sql`
+        SELECT data, slug, published, public_data
+        FROM cardly_cards WHERE owner_uid = ${uid} LIMIT 1
+      `,
+    )
+    const row = rows[0]
+    if (!row) throw new AppError(404, 'draft_not_found', 'Черновик визитки не найден')
+    const current = cardDraftSchema.parse(row.data)
+    const prepared = prepareCardSave(
+      {
+        card: current,
+        slug: row.slug,
+        published: row.published,
+        publicData: row.public_data,
+      },
+      parsedInput,
+      new Date().toISOString(),
+    )
+
+    try {
+      const updated = rowsOf<{ owner_uid: string }>(
+        await sql`
+          UPDATE cardly_cards SET
+            data = ${JSON.stringify(prepared.card)}::jsonb,
+            slug = ${prepared.card.publication.slug || null},
+            public_data = ${prepared.publicData === null ? null : JSON.stringify(prepared.publicData)}::jsonb,
+            updated_at = NOW()
+          WHERE owner_uid = ${uid}
+            AND published = ${row.published}
+            AND slug IS NOT DISTINCT FROM ${row.slug}
+          RETURNING owner_uid
+        `,
       )
-      ON CONFLICT (owner_uid) DO UPDATE SET
-        data = EXCLUDED.data,
-        slug = CASE
-          WHEN cardly_cards.published THEN cardly_cards.slug
-          ELSE EXCLUDED.slug
-        END,
-        published = cardly_cards.published,
-        public_data = cardly_cards.public_data,
-        updated_at = NOW()
-    `
-  } catch (error) {
-    if ((error as { code?: string }).code === '23505')
-      throw new AppError(409, 'slug_unavailable', 'Этот адрес уже занят')
-    throw error
+      if (updated[0]) return { card: prepared.card, publicSync: prepared.publicSync }
+    } catch (error) {
+      if ((error as { code?: string }).code === '23505')
+        throw new AppError(409, 'slug_unavailable', 'Этот адрес уже занят')
+      throw error
+    }
   }
-  return card
+
+  throw new AppError(
+    409,
+    'card_state_changed',
+    'Состояние визитки изменилось. Повторите сохранение',
+  )
 }
 
 export async function isSlugAvailable(slug: string, uid?: string): Promise<boolean> {

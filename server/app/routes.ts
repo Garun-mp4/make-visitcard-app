@@ -112,7 +112,7 @@ export function registerRoutes(router: Router) {
     requireSessionAuth,
     route(async (req, res) => {
       const input = cardDraftSchema.parse(req.body)
-      res.json({ card: await saveCard(req.auth!.uid, input) })
+      res.json(await saveCard(req.auth!.uid, input))
     }),
   )
 
@@ -155,11 +155,13 @@ export function registerRoutes(router: Router) {
     requireSessionAuth,
     route(async (req, res) => {
       const { slug } = slugBody.parse(req.body)
-      await publishCard(req.auth!.uid, slug)
+      const card = await publishCard(req.auth!.uid, slug)
       const botUsername = process.env.VITE_TELEGRAM_BOT_USERNAME ?? 'cardly_bot'
       const shortName = process.env.VITE_TELEGRAM_APP_SHORT_NAME ?? 'app'
       res.json({
         published: true,
+        card,
+        publicSync: { state: 'synced', syncedAt: card.lastPublishedAt, invalidPaths: [] },
         slug,
         publicUrl: `${appOrigin(req)}/c/${slug}`,
         telegramUrl: `https://t.me/${botUsername}/${shortName}?startapp=${slug}`,
@@ -172,7 +174,12 @@ export function registerRoutes(router: Router) {
     requireSessionAuth,
     route(async (req, res) => {
       const result = await unpublishCard(req.auth!.uid)
-      res.json({ published: false, slugReserved: Boolean(result.slug) })
+      res.json({
+        published: false,
+        slugReserved: Boolean(result.slug),
+        card: result.card,
+        publicSync: { state: 'not_published', syncedAt: null, invalidPaths: [] },
+      })
     }),
   )
 

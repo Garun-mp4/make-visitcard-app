@@ -81,6 +81,19 @@ export interface CardStats {
 
 export type StatsPeriod = '7' | '30' | 'all'
 
+export type PublicSyncState = 'not_published' | 'synced' | 'pending_validation'
+
+export interface PublicSyncStatus {
+  state: PublicSyncState
+  syncedAt: string | null
+  invalidPaths: string[]
+}
+
+export interface CardSaveResult {
+  card: CardDraft
+  publicSync: PublicSyncStatus
+}
+
 export interface PeriodStats {
   period: StatsPeriod
   range: { from: string | null; to: string | null }

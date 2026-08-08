@@ -23,4 +23,29 @@ describe('apiRequest', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(new Headers(init.headers).get('Authorization')).toBe('Bearer signed-session')
   })
+
+  it('turns an exceeded request timeout into a retryable API error', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_path: string, init?: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('Aborted', 'AbortError')),
+            )
+          }),
+      ),
+    )
+
+    const request = expect(
+      apiRequest('/api/cards/unpublish', { method: 'POST', timeoutMs: 50 }),
+    ).rejects.toMatchObject({
+      status: 408,
+      payload: { code: 'request_timeout' },
+    })
+    await vi.advanceTimersByTimeAsync(51)
+    await request
+    vi.useRealTimers()
+  })
 })
