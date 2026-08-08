@@ -1,6 +1,6 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Eye } from 'lucide-react'
 import type { PropsWithChildren, ReactNode } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import { useCardStore } from '@/app/card-store'
 import { SaveStatus } from '@/components/feedback/save-status'
@@ -26,6 +26,7 @@ export function EditorShell({
     ['/app/editor/publish', l('Публикация', 'Publication')],
   ] as const
   const navigate = useNavigate()
+  const location = useLocation()
   const { card, saveError, saveNow, saveStatus } = useCardStore()
   useTelegramBack(() => void navigate('/app/editor'))
   return (
@@ -81,7 +82,21 @@ export function EditorShell({
           </aside>
         </div>
       </div>
-      {mobileFooter}
+      {mobileFooter ?? (
+        <div className="fixed inset-x-0 bottom-[max(16px,var(--tg-safe-bottom),var(--tg-content-safe-bottom))] z-10 mx-auto max-w-[430px] px-5 lg:hidden">
+          <button
+            className="surface flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--surface-elevated)] text-sm font-semibold shadow-[var(--shadow-floating)]"
+            onClick={() =>
+              navigate(card.publication.published ? '/app/preview' : '/app/card', {
+                state: { returnTo: location.pathname },
+              })
+            }
+          >
+            <Eye size={17} aria-hidden="true" />
+            {l('Предпросмотр', 'Preview')}
+          </button>
+        </div>
+      )}
     </main>
   )
 }

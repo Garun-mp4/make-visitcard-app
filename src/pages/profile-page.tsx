@@ -1,4 +1,4 @@
-import { Bell, Copy, ExternalLink, Languages, ShieldCheck } from 'lucide-react'
+import { Bell, Copy, ExternalLink, Languages, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { useCardStore } from '@/app/card-store'
@@ -119,6 +119,14 @@ export default function ProfilePage() {
                       : feedback.revealLink(t('profile.copyLink'), url),
                   ),
               ),
+          ],
+          [
+            RotateCcw,
+            l('Повторить первичную настройку', 'Repeat initial setup'),
+            () => {
+              sessionStorage.removeItem('cardly-onboarding-revisit-step')
+              void navigate('/app/onboarding/revisit')
+            },
           ],
         ].map(([Icon, label, action]) => {
           const I = Icon as typeof Languages

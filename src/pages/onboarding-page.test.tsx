@@ -37,9 +37,27 @@ describe('OnboardingPage', () => {
         </AuthProvider>
       </MemoryRouter>,
     )
-    expect(screen.getByRole('heading', { name: /Визитка, которая работает/ })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Начать' }))
+    expect(
+      screen.getByRole('heading', { name: /профессиональная визитка — внутри Telegram/i }),
+    ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Продолжить' }))
     expect(screen.getByLabelText('Имя')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Продолжить' })).toBeEnabled()
+  })
+
+  it('starts revisit mode from the welcome step without clearing current data', () => {
+    sessionStorage.setItem('cardly-onboarding-revisit-step', '4')
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <CardStoreProvider>
+            <OnboardingPage mode="revisit" />
+          </CardStoreProvider>
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+    expect(screen.getByText(/Текущие данные и публикация сохранятся/)).toBeInTheDocument()
+    expect(screen.getByText('@alexey_cardly')).toBeInTheDocument()
+    expect(screen.getByLabelText('Шаг 1 из 6')).toBeInTheDocument()
   })
 })

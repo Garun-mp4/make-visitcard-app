@@ -75,6 +75,7 @@ export function AppRoutes() {
         <Route path="/" element={<LaunchPage />} />
         <Route path="/app/onboarding" element={<OnboardingGuard />} />
         <Route path="/app" element={<OwnerGuard />}>
+          <Route path="onboarding/revisit" element={<OnboardingPage mode="revisit" />} />
           <Route path="preview" element={<OwnerPreviewPage />} />
           <Route element={<OwnerLayout />}>
             <Route index element={<Navigate to="card" replace />} />

@@ -8,6 +8,7 @@
   --surface: #ffffff;
   --surface-secondary: #f0f1ed;
   --surface-elevated: #ffffff;
+  --control-background: #fbfcfa;
   --text-primary: #171916;
   --text-secondary: #555b52;
   --text-muted: #7a8176;
@@ -35,6 +36,28 @@
 
 [data-telegram-theme='dark'] {
   color-scheme: dark;
+  --background: #0c100e;
+  --surface: #141916;
+  --surface-secondary: #1a201c;
+  --surface-elevated: #202722;
+  --control-background: #101512;
+  --text-primary: #f1f4f0;
+  --text-secondary: #b6c0b8;
+  --text-muted: #7f8c82;
+  --border: #29322c;
+  --border-strong: #39463d;
+  --accent: #61b78d;
+  --accent-hover: #72c79c;
+  --accent-soft: #183126;
+  --accent-contrast: #102019;
+  --success: #5fb58b;
+  --warning: #d2a35c;
+  --warning-soft: #291c0f;
+  --error: #df7a7f;
+  --error-soft: #24100b;
+  --focus-ring: #82a9d8;
+  --shadow-floating: 0 12px 32px rgb(0 0 0 / 24%);
+  --shadow-modal: 0 24px 70px rgb(0 0 0 / 48%);
 }
 
 * {
@@ -120,7 +143,7 @@ a[href] {
 }
 
 .surface {
-  background: var(--surface);
+  background: var(--control-background);
   border: 1px solid var(--border);
 }
 
