@@ -84,6 +84,7 @@ test('published edits go live and unpublish is serialized', async ({ page }, tes
   let publicCard: typeof publishedCard | null = structuredClone(publishedCard)
   let unpublishCount = 0
   let saveCount = 0
+  let publicEventCount = 0
   const dashboard = {
     owner,
     stats: {
@@ -174,13 +175,14 @@ test('published edits go live and unpublish is serialized', async ({ page }, tes
           }),
         }),
   )
-  await page.route('**/api/public/cards/alexey/events', (route) =>
-    route.fulfill({
+  await page.route('**/api/public/cards/alexey/events', (route) => {
+    publicEventCount += 1
+    return route.fulfill({
       status: 202,
       contentType: 'application/json',
       body: JSON.stringify({ ok: true }),
-    }),
-  )
+    })
+  })
 
   await page.goto('/app/editor/appearance')
   await page.getByRole('button', { name: /Dark/ }).click()
@@ -188,6 +190,7 @@ test('published edits go live and unpublish is serialized', async ({ page }, tes
 
   await page.goto('/c/alexey')
   await expect(page.locator('[data-public-theme="dark"]')).toBeVisible()
+  await expect(page.getByText('Предпросмотр владельца')).toHaveCount(0)
 
   await page.goto('/app/editor/publish')
   await expect(page.getByText('Все сохранённые изменения опубликованы.')).toBeVisible()
@@ -208,6 +211,26 @@ test('published edits go live and unpublish is serialized', async ({ page }, tes
     path: testInfo.outputPath(`publication-${testInfo.project.name}.png`),
     fullPage: true,
   })
+
+  const eventsBeforePreview = publicEventCount
+  await page.getByRole('button', { name: 'Предпросмотр' }).click()
+  await expect(page).toHaveURL(/\/app\/preview$/)
+  await expect(page.getByText('Предпросмотр владельца')).toBeVisible()
+  await expect(page.locator('[data-public-theme="dark"]')).toBeVisible()
+  await expect.poll(() => publicEventCount).toBe(eventsBeforePreview)
+  for (const width of widths) {
+    await page.setViewportSize({
+      width,
+      height: testInfo.project.name === 'telegram-mobile' ? 844 : 1024,
+    })
+    const metrics = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }))
+    expect(metrics.scrollWidth, `owner preview overflow at ${width}px`).toBe(metrics.clientWidth)
+  }
+  await page.getByRole('button', { name: 'Назад к публикации' }).click()
+  await expect(page).toHaveURL(/\/app\/editor\/publish$/)
 
   const savesBeforeUnpublish = saveCount
   await page.getByRole('button', { name: 'Снять с публикации' }).click()

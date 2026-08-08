@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { demoCard } from '@shared/demo-data'
@@ -88,5 +88,28 @@ describe('PublicationPage', () => {
     await user.click(screen.getByRole('button', { name: /^Снять$/ }))
 
     expect(notify).toHaveBeenCalledWith('Сервер не ответил вовремя · client-timeout', 'error')
+  })
+
+  it('opens the protected owner preview with a publication return target', async () => {
+    const user = userEvent.setup()
+    function LocationProbe() {
+      const location = useLocation()
+      return <output data-testid="location">{JSON.stringify(location)}</output>
+    }
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+        <LocationProbe />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getAllByRole('button', { name: 'Предпросмотр' })[0])
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent('"pathname":"/app/preview"'),
+    )
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '"state":{"returnTo":"/app/editor/publish"}',
+    )
   })
 })
