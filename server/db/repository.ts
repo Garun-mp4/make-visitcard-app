@@ -495,7 +495,7 @@ export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<P
     const totals = metricTotals(rows)
     return {
       period,
-      range: { from: rows[0]?.label ?? null, to: rows.at(-1)?.label ?? null },
+      range: { from: rows[0]?.label ?? null, to: rows[rows.length - 1]?.label ?? null },
       totals,
       deltas: { views: null, primaryClicks: null, leads: null },
       series: rows.map((row) => ({ label: String(row.label), views: Number(row.views) })),

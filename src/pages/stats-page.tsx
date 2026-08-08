@@ -40,7 +40,7 @@ export default function StatsPage() {
       }
       setData({
         period,
-        range: { from: daily[0]?.date ?? null, to: daily.at(-1)?.date ?? null },
+        range: { from: daily[0]?.date ?? null, to: daily[daily.length - 1]?.date ?? null },
         totals,
         deltas: { views: 18, primaryClicks: 12, leads: null },
         series: daily.map((item) => ({ label: item.date, views: item.views })),
