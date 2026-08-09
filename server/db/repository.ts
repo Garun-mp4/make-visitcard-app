@@ -303,6 +303,11 @@ export async function getPublicCard(slug: string): Promise<CardView | null> {
       ...parsed.data.profile,
       avatarUrl: parsed.data.profile.avatarUrl ?? '',
     },
+    projects: parsed.data.projects.map((project) => ({
+      ...project,
+      coverUrl: project.coverUrl ?? '',
+      projectUrl: project.projectUrl ?? '',
+    })),
   }
 }
 
