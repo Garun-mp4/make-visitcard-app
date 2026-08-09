@@ -16,6 +16,8 @@ test('demo owner navigation and editor autosave', async ({ page }, testInfo) => 
   })
   await page.locator('nav[aria-label="Основная навигация"]:visible a[href="/app/editor"]').click()
   await page.getByRole('link', { name: 'Основное' }).click()
+  await expect(page.getByRole('button', { name: /Загрузить фото/ })).toHaveCount(0)
+  await expect(page.locator('input[type="file"]')).toHaveCount(0)
   const name = page.getByLabel('Имя')
   await name.fill('Алексей Тест')
   await expect(page.getByText('Сохранено')).toBeVisible()

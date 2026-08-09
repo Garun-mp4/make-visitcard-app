@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { cardDraftSchema, publicCardSchema, publishableCardSchema } from '../../shared/schemas.js'
-import { createInitialCard } from '../../shared/initial-card.js'
+import { createInitialCard, syncTelegramAvatar } from '../../shared/initial-card.js'
 import type {
   AnalyticsEvent,
   CardDraft,
@@ -152,7 +152,11 @@ export async function getCard(uid: string): Promise<CardDraft | null> {
 
 export async function getOrCreateCard(owner: OwnerProfile): Promise<CardDraft> {
   const current = await getCard(owner.uid)
-  if (current) return current
+  if (current) {
+    const synced = syncTelegramAvatar(current, owner.photoUrl)
+    if (synced === current) return current
+    return (await saveCard(owner.uid, synced)).card
+  }
   const sql = await database()
   const card = createInitialCard(owner)
   await sql`

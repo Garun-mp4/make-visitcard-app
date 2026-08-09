@@ -1,5 +1,16 @@
 import type { CardDraft, OwnerProfile } from './types.js'
 
+export function syncTelegramAvatar(card: CardDraft, photoUrl: string): CardDraft {
+  if (card.profile.avatarUrl === photoUrl) return card
+  return {
+    ...card,
+    profile: {
+      ...card.profile,
+      avatarUrl: photoUrl,
+    },
+  }
+}
+
 export function createInitialCard(
   owner: OwnerProfile,
   timestamp = new Date().toISOString(),
