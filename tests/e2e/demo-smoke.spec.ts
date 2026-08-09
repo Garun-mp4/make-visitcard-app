@@ -169,3 +169,46 @@ test('project editor uploads a cover, tracks limits and keeps an empty URL priva
   await expect(page.getByRole('dialog')).toContainText('Новый кейс')
   await expect(page.getByRole('button', { name: /Открыть проект/ })).toHaveCount(0)
 })
+
+test('statistics exposes leads as a visible section and keeps the period', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/app/stats')
+
+  await expect(page.getByRole('navigation', { name: 'Раздел статистики' })).toBeVisible()
+  await expect(page.getByLabel('Открыть заявки')).toHaveCount(0)
+  await page.getByRole('button', { name: '30 дней' }).click()
+  await page.getByRole('link', { name: /Заявки.*1/ }).click()
+
+  await expect(page).toHaveURL(/\/app\/stats\/leads\?period=30$/)
+  await expect(page.getByRole('link', { name: 'Статистика' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect(page.getByRole('link', { name: /Заявки.*1/ })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect(page.getByRole('button', { name: 'Новые' })).toBeVisible()
+  await page.screenshot({
+    path: `artifacts/visual-qa/stats-leads-${testInfo.project.name}.png`,
+    fullPage: true,
+  })
+
+  await page.getByRole('button', { name: 'Новые' }).click()
+  await expect(page.getByText('Мария Орлова')).toBeVisible()
+  await expect(page.getByText('Илья Морозов')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Прочитанные' }).click()
+  await expect(page.getByText('Мария Орлова')).toHaveCount(0)
+  await expect(page.getByText('Илья Морозов')).toBeVisible()
+
+  await page.getByRole('link', { name: 'Обзор' }).click()
+  await expect(page.getByRole('button', { name: '30 дней' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    await page.evaluate(() => document.documentElement.clientWidth),
+  )
+})
