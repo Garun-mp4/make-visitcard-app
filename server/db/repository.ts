@@ -295,7 +295,15 @@ export async function getPublicCard(slug: string): Promise<CardView | null> {
   )
   if (!rows[0]) return null
   const parsed = publicCardSchema.safeParse(rows[0].data)
-  return parsed.success ? parsed.data : null
+  if (!parsed.success) return null
+
+  return {
+    ...parsed.data,
+    profile: {
+      ...parsed.data.profile,
+      avatarUrl: parsed.data.profile.avatarUrl ?? '',
+    },
+  }
 }
 
 export async function createLead(slug: string, input: LeadInput) {
