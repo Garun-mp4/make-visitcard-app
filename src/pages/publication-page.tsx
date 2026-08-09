@@ -1,4 +1,13 @@
-import { AlertTriangle, CheckCircle2, Copy, Download, Eye, Share2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Copy,
+  Download,
+  Eye,
+  Image as ImageIcon,
+  RefreshCw,
+  Share2,
+} from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -55,6 +64,121 @@ function SyncNotice({
       <span className="min-w-0 flex-1 leading-relaxed">{children}</span>
       {action}
     </div>
+  )
+}
+
+function SharePreviewCard({
+  imageUrl,
+  syncState,
+  updating,
+  saveFailed,
+}: {
+  imageUrl: string
+  syncState: 'synced' | 'pending_validation'
+  updating: boolean
+  saveFailed: boolean
+}) {
+  const l = useLocaleText()
+  const [imageFailed, setImageFailed] = useState(false)
+  const [retry, setRetry] = useState(0)
+  const source = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}retry=${retry}`
+  const pending = syncState === 'pending_validation'
+  const status = saveFailed
+    ? l(
+        'Не удалось обновить превью. Показана предыдущая публичная версия.',
+        'Could not update the preview. The previous public version is shown.',
+      )
+    : updating
+      ? l('Готовим обновлённое превью…', 'Preparing the updated preview…')
+      : pending
+        ? l(
+            'Превью показывает последнюю корректную публичную версию.',
+            'The preview shows the last valid public version.',
+          )
+        : l(
+            'Превью соответствует опубликованной визитке.',
+            'The preview matches the published card.',
+          )
+
+  return (
+    <section className="grid min-w-0 gap-3" aria-labelledby="share-preview-heading">
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="share-preview-heading" className="m-0 text-sm font-semibold">
+            {l('Превью при отправке', 'Share preview')}
+          </h2>
+          <p className="mb-0 mt-1 text-xs leading-relaxed text-[var(--text-muted)]">
+            {l(
+              'Так ссылка будет выглядеть в поддерживаемых приложениях.',
+              'This is how the link appears in supported apps.',
+            )}
+          </p>
+        </div>
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent)]">
+          <ImageIcon size={17} aria-hidden="true" />
+        </span>
+      </div>
+
+      <div className="relative aspect-[1200/630] min-w-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)]">
+        {imageFailed ? (
+          <div className="absolute inset-0 grid content-center justify-items-center gap-2 p-4 text-center">
+            <AlertTriangle size={22} className="text-[var(--warning)]" aria-hidden="true" />
+            <p className="m-0 text-xs text-[var(--text-secondary)]">
+              {l('Не удалось загрузить превью', 'Could not load the preview')}
+            </p>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-xs font-semibold text-[var(--accent)]"
+              onClick={() => {
+                setImageFailed(false)
+                setRetry((value) => value + 1)
+              }}
+            >
+              <RefreshCw size={15} aria-hidden="true" />
+              {l('Повторить', 'Retry')}
+            </button>
+          </div>
+        ) : (
+          <img
+            key={source}
+            src={source}
+            alt={l('Превью ссылки на визитку', 'Business card link preview')}
+            className="size-full object-cover"
+            onError={() => setImageFailed(true)}
+          />
+        )}
+        {updating ? (
+          <div
+            className="pointer-events-none absolute inset-0 bg-[color-mix(in_srgb,var(--surface)_68%,transparent)] motion-safe:animate-pulse"
+            aria-hidden="true"
+          />
+        ) : null}
+      </div>
+
+      <div
+        className={`flex items-start gap-2 text-xs leading-relaxed ${saveFailed ? 'text-[var(--error)]' : pending || updating ? 'text-[var(--warning)]' : 'text-[var(--success)]'}`}
+        role="status"
+      >
+        {saveFailed || pending ? (
+          <AlertTriangle className="mt-0.5 shrink-0" size={15} aria-hidden="true" />
+        ) : updating ? (
+          <RefreshCw
+            className="mt-0.5 shrink-0 motion-safe:animate-spin"
+            size={15}
+            aria-hidden="true"
+          />
+        ) : (
+          <CheckCircle2 className="mt-0.5 shrink-0" size={15} aria-hidden="true" />
+        )}
+        <span>{status}</span>
+      </div>
+      <p className="m-0 text-[11px] leading-relaxed text-[var(--text-muted)]">
+        {l(
+          'Telegram и другие приложения могут некоторое время показывать сохранённую копию.',
+          'Telegram and other apps may temporarily show a cached copy.',
+        )}
+      </p>
+    </section>
   )
 }
 
@@ -212,6 +336,9 @@ export default function PublicationPage() {
   const published = card.publication.published
   const publishing = publicationOperation === 'publishing'
   const unpublishing = publicationOperation === 'unpublishing'
+  const sharePreviewVersion =
+    publicSync.syncedAt ?? card.lastPublishedAt ?? card.publication.publishedAt ?? 'published'
+  const sharePreviewUrl = `/api/public/cards/${slug}/og.png?v=${encodeURIComponent(sharePreviewVersion)}`
   const publicationValidation = useMemo(
     () =>
       publishableCardSchema.safeParse({
@@ -472,6 +599,15 @@ export default function PublicationPage() {
             compact
           />
         </div>
+      ) : null}
+
+      {published ? (
+        <SharePreviewCard
+          imageUrl={sharePreviewUrl}
+          syncState={publicSync.state === 'pending_validation' ? 'pending_validation' : 'synced'}
+          updating={saveStatus === 'dirty' || saveStatus === 'saving'}
+          saveFailed={saveStatus === 'error' || Boolean(publicationError)}
+        />
       ) : null}
 
       {syncNotice}

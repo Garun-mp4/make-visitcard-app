@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -53,6 +53,65 @@ describe('PublicationPage', () => {
     await user.click(screen.getByRole('button', { name: /^Снять$/ }))
 
     expect(state.value.unpublishCard).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the versioned share preview of the last public snapshot', () => {
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Превью при отправке' })).toBeInTheDocument()
+    const preview = screen.getByRole('img', { name: 'Превью ссылки на визитку' })
+    expect(preview).toHaveAttribute(
+      'src',
+      expect.stringMatching(
+        new RegExp(
+          `/api/public/cards/alexey/og\\.png\\?v=${encodeURIComponent(demoCard.lastPublishedAt!)}`,
+        ),
+      ),
+    )
+    expect(screen.getByText('Превью соответствует опубликованной визитке.')).toBeInTheDocument()
+  })
+
+  it('keeps the last valid preview visible while public changes need attention', () => {
+    state.value = {
+      ...state.value,
+      publicSync: {
+        state: 'pending_validation',
+        syncedAt: demoCard.lastPublishedAt,
+        invalidPaths: ['projects.0.title'],
+      },
+    }
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('img', { name: 'Превью ссылки на визитку' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Превью показывает последнюю корректную публичную версию.'),
+    ).toBeInTheDocument()
+  })
+
+  it('allows retrying a failed preview image without losing the publication screen', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <PublicationPage />
+      </MemoryRouter>,
+    )
+
+    fireEvent.error(screen.getByRole('img', { name: 'Превью ссылки на визитку' }))
+    expect(screen.getByText('Не удалось загрузить превью')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Повторить' }))
+    expect(screen.getByRole('img', { name: 'Превью ссылки на визитку' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('retry=1'),
+    )
   })
 
   it('shows a clear loading state while the card is being unpublished', () => {
