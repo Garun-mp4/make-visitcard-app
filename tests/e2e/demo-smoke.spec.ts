@@ -126,3 +126,44 @@ test('new editor rows start empty and language changes the whole navigation', as
   await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Statistics' })).toBeVisible()
 })
+
+test('project editor uploads a cover, tracks limits and keeps an empty URL private', async ({
+  page,
+}) => {
+  await page.goto('/app/editor/projects')
+  await page.getByRole('button', { name: 'Добавить' }).click()
+
+  const editor = page.getByRole('dialog', { name: 'Редактировать проект' })
+  await expect(editor).toBeVisible()
+  await expect(editor.getByText('0/100')).toBeVisible()
+  await expect(editor.getByText('0/60')).toBeVisible()
+  await expect(editor.getByText('0/400')).toBeVisible()
+  await expect(editor.getByText('0/2048')).toBeVisible()
+
+  await editor.getByLabel('Название проекта').fill('Новый кейс')
+  await editor.getByLabel('Категория').fill('Веб-дизайн')
+  await editor.getByLabel('Описание').fill('Редизайн первого экрана продукта.')
+  await editor.getByLabel('Изображение проекта').setInputFiles({
+    name: 'cover.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    ),
+  })
+  await expect(editor.getByRole('img', { name: 'Обложка проекта' })).toBeVisible()
+
+  const visibility = editor.getByRole('switch', { name: 'Показывать проект' })
+  await visibility.click()
+  await expect(visibility).toHaveAttribute('aria-checked', 'true')
+  await editor.getByRole('button', { name: 'Закрыть' }).click()
+  await expect(page.getByText('Сохранено')).toBeVisible()
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
+  expect(overflow).toBeLessThanOrEqual(0)
+
+  await page.goto('/c/alexey')
+  await page.getByRole('button', { name: /Новый кейс/ }).click()
+  await expect(page.getByRole('dialog')).toContainText('Новый кейс')
+  await expect(page.getByRole('button', { name: /Открыть проект/ })).toHaveCount(0)
+})
