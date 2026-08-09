@@ -117,6 +117,15 @@ test('unknown route renders a not-found state', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('не найдена')
 })
 
+test('editor and profile headers do not show inert overflow menus', async ({ page }) => {
+  for (const path of ['/app/editor', '/app/profile']) {
+    await page.goto(path)
+    const header = page.locator('header.page-header')
+    await expect(header).toBeVisible()
+    await expect(header).not.toContainText('•••')
+  }
+})
+
 test('new editor rows start empty and language changes the whole navigation', async ({ page }) => {
   await page.goto('/app/editor/contacts')
   await page.getByRole('button', { name: 'Добавить' }).click()

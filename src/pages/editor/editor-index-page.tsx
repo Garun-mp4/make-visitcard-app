@@ -66,7 +66,6 @@ export default function EditorIndexPage() {
     <main className="owner-mobile-content lg:max-w-[880px] lg:py-8">
       <header className="page-header">
         <h1 className="page-title">{l('Редактор', 'Editor')}</h1>
-        <span className="text-xl text-[var(--text-muted)]">•••</span>
       </header>
       <div className="grid gap-3">
         {rows.map(({ to, label, detail, icon: Icon }) => (

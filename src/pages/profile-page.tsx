@@ -37,7 +37,6 @@ export default function ProfilePage() {
     <main className="owner-mobile-content lg:max-w-[760px] lg:py-8">
       <header className="page-header">
         <h1 className="page-title">{t('profile.title')}</h1>
-        <span className="text-xl text-[var(--text-muted)]">•••</span>
       </header>
       <section className="surface flex items-center gap-3 rounded-xl p-4">
         <Avatar name={card.profile.displayName} src={owner.photoUrl} />
