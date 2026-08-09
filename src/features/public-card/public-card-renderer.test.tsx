@@ -25,7 +25,25 @@ describe('PublicCardRenderer', () => {
       screen.getByRole('heading', { level: 1, name: demoCard.profile.displayName }),
     ).toBeInTheDocument()
     expect(container.querySelector(`[data-public-theme="${themeId}"]`)).toBeInTheDocument()
+    expect(container.querySelector(`[data-pen-public-card="${themeId}"]`)).toBeInTheDocument()
   })
+
+  it.each(['clean', 'dark', 'editorial'] as const)(
+    'keeps the %s Pen hierarchy on the public card',
+    (themeId) => {
+      const { container } = render(
+        <PublicCardRenderer
+          card={{ ...demoCard, appearance: { ...demoCard.appearance, themeId } }}
+        />,
+      )
+
+      expect(container.querySelector('[data-pen-region="masthead"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-pen-region="hero"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-pen-region="services"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-pen-region="projects"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-pen-region="lead-form"]')).toBeInTheDocument()
+    },
+  )
 
   it('does not render disabled sections', () => {
     render(
@@ -37,6 +55,7 @@ describe('PublicCardRenderer', () => {
             showSkills: false,
             showServices: false,
             showProjects: false,
+            showContactForm: false,
           },
         }}
       />,
@@ -44,6 +63,14 @@ describe('PublicCardRenderer', () => {
     expect(screen.queryByRole('heading', { name: 'Навыки' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Услуги' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Проекты' })).not.toBeInTheDocument()
+    expect(document.querySelector('[data-pen-region="lead-form"]')).not.toBeInTheDocument()
+  })
+
+  it('renders the lead form inline instead of a generic modal', () => {
+    render(<PublicCardRenderer card={demoCard} />)
+
+    expect(document.querySelector('[data-pen-region="lead-form"]')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('does not record owner preview interactions as public analytics', async () => {

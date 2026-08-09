@@ -11,10 +11,12 @@ export function ProjectDialog({
   project,
   open,
   onClose,
+  theme,
 }: {
   project: Project | null
   open: boolean
   onClose: () => void
+  theme: 'clean' | 'dark' | 'editorial'
 }) {
   const l = useLocaleText()
   const dialogRef = useRef<HTMLDialogElement>(null)
@@ -45,12 +47,13 @@ export function ProjectDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="m-auto max-h-[min(720px,calc(100dvh-24px))] w-[min(620px,calc(100%-24px))] overflow-auto rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-modal)] backdrop:bg-[#10120fcc]"
+      data-pen-project-sheet={theme}
+      className={`m-auto max-h-[min(720px,calc(100dvh-24px))] w-[min(620px,100%)] overflow-auto border border-[var(--border)] bg-[var(--surface)] p-0 text-[var(--text-primary)] shadow-[var(--shadow-modal)] backdrop:bg-[#10120fcc] md:rounded-3xl ${theme === 'clean' ? 'rounded-t-[24px]' : theme === 'dark' ? 'rounded-t-[18px]' : 'rounded-none'}`}
       onCancel={onClose}
     >
       {project ? (
         <article>
-          <div className="flex aspect-[16/10] items-start justify-end bg-[var(--accent-soft)] p-4">
+          <div className="relative flex aspect-[16/10] items-start justify-end bg-[var(--accent-soft)] p-4">
             {project.coverUrl ? (
               <img
                 src={project.coverUrl}
@@ -66,7 +69,7 @@ export function ProjectDialog({
               <X size={20} aria-hidden="true" />
             </IconButton>
           </div>
-          <div className="grid gap-4 p-6">
+          <div className={`grid gap-4 p-6 ${theme === 'editorial' ? 'editorial-font' : ''}`}>
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
               {project.category}
             </div>

@@ -17,10 +17,12 @@ export function LeadForm({
   slug,
   ownerName,
   previewMode = false,
+  variant = 'clean',
 }: {
   slug: string
   ownerName: string
   previewMode?: boolean
+  variant?: 'clean' | 'dark' | 'editorial'
 }) {
   const recipientName = ownerName.trim().split(/\s+/)[0] || ownerName
   const { t } = useTranslation()
@@ -99,13 +101,17 @@ export function LeadForm({
     )
 
   return (
-    <form className="grid gap-4" onSubmit={(event) => void handleSubmit(submit)(event)} noValidate>
+    <form
+      className="public-lead-form grid gap-2.5"
+      data-public-form-theme={variant}
+      onSubmit={(event) => void handleSubmit(submit)(event)}
+      noValidate
+    >
       <h2 className="heading-font m-0 text-2xl">{t('publicCard.formTitle')}</h2>
-      <p className="m-0 text-sm text-[var(--text-secondary)]">
-        {t('publicCard.usuallyReplies', { name: recipientName })}
-      </p>
+      <p className="sr-only">{t('publicCard.usuallyReplies', { name: recipientName })}</p>
       <Field
         label={t('publicCard.name')}
+        placeholder={l('Как к вам обращаться', 'Your name')}
         autoComplete="name"
         error={errors.senderName ? t('validation.name') : undefined}
         {...register('senderName')}
@@ -119,6 +125,7 @@ export function LeadForm({
       />
       <TextareaField
         label={t('publicCard.message')}
+        placeholder={l('Коротко о задаче', 'A few words about the project')}
         error={errors.message ? t('validation.message') : undefined}
         {...register('message')}
       />

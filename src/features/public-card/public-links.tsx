@@ -8,19 +8,25 @@ export function PublicLinks({
   card,
   className = '',
   analyticsEnabled = true,
+  variant = 'clean',
 }: {
   card: CardView
   className?: string
   analyticsEnabled?: boolean
+  variant?: 'clean' | 'dark' | 'editorial'
 }) {
   const links = card.links.filter((link) => link.enabled && link.public && link.url)
   if (!links.length) return null
   return (
-    <div className={`flex flex-wrap gap-2 ${className}`} aria-label="Public contacts">
+    <div
+      className={`public-links flex flex-wrap gap-2 ${className}`}
+      data-public-links-theme={variant}
+      aria-label="Public contacts"
+    >
       {links.map((link) => (
         <button
           key={link.id}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-soft)]"
+          className="public-link inline-flex items-center gap-1.5 text-[var(--accent)]"
           onClick={() => {
             if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'link_click', link.id)
             telegram.openLink(link.url)
