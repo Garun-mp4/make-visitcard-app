@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import { telegram } from '@/lib/telegram'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { isSafeExternalUrl } from '@shared/schemas'
 
 export function ProjectDialog({
   project,
@@ -19,6 +20,8 @@ export function ProjectDialog({
   theme: 'clean' | 'dark' | 'editorial'
 }) {
   const l = useLocaleText()
+  const projectUrl = project?.projectUrl.trim() ?? ''
+  const canOpenProject = Boolean(projectUrl && isSafeExternalUrl(projectUrl))
   const dialogRef = useRef<HTMLDialogElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
 
@@ -79,8 +82,8 @@ export function ProjectDialog({
             <p className="m-0 leading-relaxed text-[var(--text-secondary)]">
               {project.description}
             </p>
-            {project.projectUrl ? (
-              <Button onClick={() => telegram.openLink(project.projectUrl)}>
+            {canOpenProject ? (
+              <Button onClick={() => telegram.openLink(projectUrl)}>
                 {l('Открыть проект', 'Open project')} <ExternalLink size={17} aria-hidden="true" />
               </Button>
             ) : null}

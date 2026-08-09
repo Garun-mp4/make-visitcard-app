@@ -3,10 +3,12 @@ import { Avatar } from '@/components/ui/avatar'
 import { accentStyle } from '@/lib/accent-preset'
 import { formatPrice } from '@/lib/utils'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { isSafeExternalUrl } from '@shared/schemas'
 
 export function MiniCardPreview({ card, compact = false }: { card: CardDraft; compact?: boolean }) {
   const l = useLocaleText()
   const service = card.services.find((item) => item.enabled)
+  const projects = card.projects.filter((item) => item.enabled).slice(0, 2)
   const dark = card.appearance.themeId === 'dark'
   const editorial = card.appearance.themeId === 'editorial'
   if (compact)
@@ -101,6 +103,60 @@ export function MiniCardPreview({ card, compact = false }: { card: CardDraft; co
                 : `${service.priceType === 'from' ? l('от ', 'from ') : ''}${formatPrice(service.price, service.currency)}${service.durationText ? ` · ${service.durationText}` : ''}`}
           </strong>
         </div>
+      ) : null}
+      {card.appearance.showProjects && projects.length > 0 ? (
+        <section className="mt-5">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <h3
+              className={`${editorial ? 'font-serif' : 'heading-font'} m-0 text-lg font-semibold`}
+            >
+              {l('Проекты', 'Projects')}
+            </h3>
+            <span className="text-[10px] uppercase tracking-[0.12em] text-[var(--mini-muted)]">
+              {projects.length}/{card.projects.filter((item) => item.enabled).length}
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {projects.map((project) => (
+              <article
+                key={project.id}
+                className={`${dark ? 'border-[#303a33]' : editorial ? 'border-[#d7c8b2]' : 'border-[#dfe3dd] bg-white'} overflow-hidden rounded-xl border`}
+              >
+                <div className="aspect-[16/8] bg-[var(--accent-soft)]">
+                  {project.coverUrl ? (
+                    <img
+                      src={project.coverUrl}
+                      alt={l(
+                        `Обложка проекта «${project.title}»`,
+                        `${project.title} project cover`,
+                      )}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <div className="grid size-full place-items-center text-2xl font-semibold text-[var(--mini-accent)]">
+                      {project.title.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-3 p-3">
+                  <div className="min-w-0">
+                    <strong className="block truncate text-sm">{project.title}</strong>
+                    {project.category ? (
+                      <span className="mt-0.5 block truncate text-[11px] text-[var(--mini-muted)]">
+                        {project.category}
+                      </span>
+                    ) : null}
+                  </div>
+                  {project.projectUrl && isSafeExternalUrl(project.projectUrl) ? (
+                    <span className="shrink-0 text-xs text-[var(--mini-accent)]" aria-hidden="true">
+                      ↗
+                    </span>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       ) : null}
     </article>
   )
