@@ -153,4 +153,22 @@ export const telegram = {
     if (webApp()?.openTelegramLink) webApp()?.openTelegramLink?.(url)
     else window.location.assign(url)
   },
+  shareUrl(data: ShareData) {
+    const app = webApp()
+    if (!app?.openTelegramLink) return false
+
+    const url = data.url?.trim() ?? ''
+    const text = data.text?.trim() || data.title?.trim() || ''
+    if (!url && !text) return false
+
+    const target = new URL('https://t.me/share/url')
+    target.searchParams.set('url', url)
+    if (text) target.searchParams.set('text', text)
+    try {
+      app.openTelegramLink(target.toString())
+      return true
+    } catch {
+      return false
+    }
+  },
 }

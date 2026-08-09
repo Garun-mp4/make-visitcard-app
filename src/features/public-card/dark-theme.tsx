@@ -12,6 +12,7 @@ import { accentStyle } from '@/lib/accent-preset'
 import { telegram } from '@/lib/telegram'
 import { recordPublicEvent } from '@/services/public-analytics'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { usePublicCardShare } from '@/features/public-card/use-public-card-share'
 
 function SectionHeader({ number, children }: { number: string; children: ReactNode }) {
   return (
@@ -37,6 +38,11 @@ export function DarkTheme({
 }) {
   const l = useLocaleText()
   const { skills, services, projects } = orderedPublicData(card)
+  const share = usePublicCardShare({
+    card,
+    publicUrl: publicUrl ?? window.location.href,
+    analyticsEnabled,
+  })
   const primaryAction = () => {
     if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
     telegram.openLink(card.primaryAction.value)
@@ -68,7 +74,7 @@ export function DarkTheme({
           <a href="#dark-work">Work</a>
           <a href="#dark-services">Services</a>
           <button onClick={onLead}>Contact</button>
-          <button onClick={() => navigator.share?.({ url: publicUrl })}>Share ↗</button>
+          <button onClick={() => void share()}>Share ↗</button>
         </nav>
       </header>
 

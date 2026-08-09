@@ -6,7 +6,9 @@ import { demoCard } from '@shared/demo-data'
 import { PublicCardRenderer } from './public-card-renderer'
 
 const recordPublicEvent = vi.hoisted(() => vi.fn())
+const shareOrCopy = vi.hoisted(() => vi.fn().mockResolvedValue('shared'))
 vi.mock('@/services/public-analytics', () => ({ recordPublicEvent }))
+vi.mock('@/lib/share', () => ({ shareOrCopy }))
 vi.mock('@/features/public-card/project-dialog', () => ({
   ProjectDialog: () => null,
 }))
@@ -83,5 +85,27 @@ describe('PublicCardRenderer', () => {
     await user.click(screen.getByRole('button', { name: /Finflow/ }))
 
     expect(recordPublicEvent).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['clean', 'Поделиться ↗'],
+    ['dark', 'Share ↗'],
+    ['editorial', 'Share'],
+  ] as const)('uses the shared native flow from the %s desktop header', async (themeId, label) => {
+    shareOrCopy.mockClear()
+    render(
+      <PublicCardRenderer
+        card={{ ...demoCard, appearance: { ...demoCard.appearance, themeId } }}
+        publicUrl="https://cardly.test/c/alexey"
+      />,
+    )
+
+    await userEvent.setup().click(screen.getByRole('button', { name: label }))
+
+    expect(shareOrCopy).toHaveBeenCalledWith({
+      title: demoCard.profile.displayName,
+      text: demoCard.profile.profession,
+      url: 'https://cardly.test/c/alexey',
+    })
   })
 })

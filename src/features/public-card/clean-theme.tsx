@@ -16,6 +16,7 @@ import { accentStyle } from '@/lib/accent-preset'
 import { telegram } from '@/lib/telegram'
 import { recordPublicEvent } from '@/services/public-analytics'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { usePublicCardShare } from '@/features/public-card/use-public-card-share'
 
 export function CleanTheme({
   card,
@@ -32,6 +33,11 @@ export function CleanTheme({
 }) {
   const l = useLocaleText()
   const { skills, services, projects } = orderedPublicData(card)
+  const share = usePublicCardShare({
+    card,
+    publicUrl: publicUrl ?? window.location.href,
+    analyticsEnabled,
+  })
   const primaryAction = () => {
     if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
     telegram.openLink(card.primaryAction.value)
@@ -63,7 +69,7 @@ export function CleanTheme({
           <PublicActions card={card} analyticsEnabled={analyticsEnabled} publicUrl={publicUrl} />
         </div>
         <button
-          onClick={() => navigator.share?.({ url: publicUrl })}
+          onClick={() => void share()}
           className="hidden text-xs font-semibold text-[var(--accent)] md:block lg:hidden"
         >
           {l('Поделиться ↗', 'Share ↗')}

@@ -11,6 +11,7 @@ import { accentStyle } from '@/lib/accent-preset'
 import { telegram } from '@/lib/telegram'
 import { recordPublicEvent } from '@/services/public-analytics'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { usePublicCardShare } from '@/features/public-card/use-public-card-share'
 
 const roman = ['I', 'II', 'III', 'IV', 'V', 'VI']
 
@@ -29,6 +30,11 @@ export function EditorialTheme({
 }) {
   const l = useLocaleText()
   const { skills, services, projects } = orderedPublicData(card)
+  const share = usePublicCardShare({
+    card,
+    publicUrl: publicUrl ?? window.location.href,
+    analyticsEnabled,
+  })
   const primaryAction = () => {
     if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'primary_cta_click', 'primary')
     telegram.openLink(card.primaryAction.value)
@@ -63,7 +69,7 @@ export function EditorialTheme({
           <span>·</span>
           <button onClick={onLead}>Contact</button>
           <span>·</span>
-          <button onClick={() => navigator.share?.({ url: publicUrl })}>Share</button>
+          <button onClick={() => void share()}>Share</button>
         </nav>
       </header>
 

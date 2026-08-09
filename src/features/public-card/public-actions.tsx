@@ -3,11 +3,9 @@ import { Bookmark, QrCode, Share2 } from 'lucide-react'
 import type { CardView } from '@shared/types'
 import { copyText } from '@/lib/utils'
 import { downloadVCard } from '@/lib/vcard'
-import { telegram } from '@/lib/telegram'
 import { useFeedback } from '@/components/feedback/feedback-provider'
-import { shareOrCopy } from '@/lib/share'
-import { recordPublicEvent } from '@/services/public-analytics'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { usePublicCardShare } from '@/features/public-card/use-public-card-share'
 
 export function PublicActions({
   card,
@@ -24,26 +22,7 @@ export function PublicActions({
 }) {
   const feedback = useFeedback()
   const text = useLocaleText()
-  const share = async () => {
-    onShare?.()
-    const result = await shareOrCopy({
-      title: card.profile.displayName,
-      text: card.profile.profession,
-      url: publicUrl,
-    })
-    if (result === 'cancelled') return
-    if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'share', 'share')
-    if (result === 'manual')
-      feedback.revealLink(text('Поделиться визиткой', 'Share business card'), publicUrl)
-    else
-      feedback.notify(
-        result === 'copied'
-          ? text('Ссылка скопирована', 'Link copied')
-          : text('Окно отправки открыто', 'Share dialog opened'),
-        'success',
-      )
-    telegram.notify('success')
-  }
+  const share = usePublicCardShare({ card, publicUrl, analyticsEnabled, onShare })
   const save = () => {
     try {
       downloadVCard(card)

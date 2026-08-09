@@ -40,6 +40,32 @@ describe('shareOrCopy', () => {
     expect(copy).toHaveBeenCalledWith('https://cardly.test/c/ada')
   })
 
+  it('opens the Telegram chooser when the system share sheet is unavailable', async () => {
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined })
+    const copy = vi.fn().mockResolvedValue(true)
+    const shareInTelegram = vi.fn().mockReturnValue(true)
+    const data = { title: 'Ada', text: 'Designer', url: 'https://cardly.test/c/ada' }
+
+    await expect(shareOrCopy(data, copy, shareInTelegram)).resolves.toBe('telegram')
+    expect(shareInTelegram).toHaveBeenCalledWith(data)
+    expect(copy).not.toHaveBeenCalled()
+  })
+
+  it('uses the Telegram chooser when the browser rejects the payload before sharing', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'share', { configurable: true, value: share })
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: vi.fn().mockReturnValue(false),
+    })
+    const shareInTelegram = vi.fn().mockReturnValue(true)
+
+    await expect(
+      shareOrCopy({ url: 'https://cardly.test/c/ada' }, vi.fn(), shareInTelegram),
+    ).resolves.toBe('telegram')
+    expect(share).not.toHaveBeenCalled()
+  })
+
   it('returns manual when both browser APIs fail', async () => {
     Object.defineProperty(navigator, 'share', { configurable: true, value: undefined })
     await expect(
