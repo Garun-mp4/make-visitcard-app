@@ -5,7 +5,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": ["dist/index.html", "index.html"]
+      "includeFiles": "dist/index.html"
     }
   },
   "rewrites": [
