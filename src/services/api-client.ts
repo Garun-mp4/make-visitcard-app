@@ -20,6 +20,10 @@ export function setApiSessionToken(token: string | null): void {
   sessionToken = token
 }
 
+export function getApiSessionHeaders(): Record<string, string> {
+  return sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}
+}
+
 export interface ApiRequestInit extends RequestInit {
   timeoutMs?: number
 }

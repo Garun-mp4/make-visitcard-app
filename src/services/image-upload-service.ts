@@ -1,7 +1,7 @@
 import { upload } from '@vercel/blob/client'
 
 import { clientEnv } from '@/config/client-env'
-import { apiRequest } from '@/services/api-client'
+import { apiRequest, getApiSessionHeaders } from '@/services/api-client'
 
 const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maxBytes = 5 * 1024 * 1024
@@ -26,6 +26,7 @@ export async function uploadCardImage(
     handleUploadUrl: '/api/images/upload',
     clientPayload: JSON.stringify({ kind }),
     contentType: file.type,
+    headers: getApiSessionHeaders(),
     onUploadProgress: ({ percentage }) => onProgress?.(Math.round(percentage)),
   })
   return blob.url
