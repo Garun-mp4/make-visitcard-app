@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og'
-import React from 'react'
+import { createElement, type CSSProperties, type ReactNode } from 'react'
 
 import { accentPresets } from '../../shared/accent-presets.js'
 import type { CardView } from '../../shared/types.js'
@@ -70,6 +70,14 @@ function clamp(value: string, maximum: number): string {
     .slice(0, maximum - 1)
     .join('')
     .trimEnd()}…`
+}
+
+function box(style: CSSProperties, ...children: ReactNode[]) {
+  return createElement('div', { style }, ...children)
+}
+
+function text(style: CSSProperties, value: string) {
+  return createElement('span', { style }, value)
 }
 
 export async function loadOpenGraphAvatar(url: string): Promise<string | null> {
@@ -147,168 +155,151 @@ export async function renderOpenGraphImage(card: CardView): Promise<ImageRespons
         ? '18px'
         : '42px'
 
-  return new ImageResponse(
-    <div
-      style={{
+  const avatarNode = avatar
+    ? createElement('img', {
+        src: avatar,
+        width: 190,
+        height: 190,
+        alt: '',
+        style: { width: '100%', height: '100%', objectFit: 'cover' },
+      })
+    : initials(card.profile.displayName)
+
+  const image = box(
+    {
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      padding: '42px',
+      background: theme.background,
+      color: theme.text,
+      fontFamily: 'Noto Sans',
+    },
+    box(
+      {
         width: '100%',
         height: '100%',
         display: 'flex',
-        padding: '42px',
-        background: theme.background,
-        color: theme.text,
-        fontFamily: 'Noto Sans',
-      }}
-    >
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        overflow: 'hidden',
+        border: `2px solid ${theme.border}`,
+        borderRadius: editorial ? '8px' : '34px',
+        background: theme.surface,
+        padding: '46px 54px 42px',
+        position: 'relative',
+      },
+      box({
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: editorial ? '16px' : '100%',
+        height: editorial ? '100%' : '12px',
+        display: 'flex',
+        background: accentColor,
+      }),
+      box(
+        {
           display: 'flex',
-          flexDirection: 'column',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          overflow: 'hidden',
-          border: `2px solid ${theme.border}`,
-          borderRadius: editorial ? '8px' : '34px',
-          background: theme.surface,
-          padding: '46px 54px 42px',
-          position: 'relative',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: editorial ? '16px' : '100%',
-            height: editorial ? '100%' : '12px',
+          color: dark ? accentColor : theme.muted,
+          fontSize: 18,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+        },
+        text({}, theme.eyebrow),
+        text({ color: accentColor }, `/${card.publication.slug}`),
+      ),
+      box(
+        {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '54px',
+        },
+        box(
+          {
+            minWidth: 0,
+            flex: 1,
             display: 'flex',
-            background: accentColor,
-          }}
-        />
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            color: dark ? accentColor : theme.muted,
-            fontSize: 18,
-            fontWeight: 700,
-            letterSpacing: '0.12em',
-          }}
-        >
-          <span>{theme.eyebrow}</span>
-          <span style={{ color: accentColor }}>/{card.publication.slug}</span>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '54px',
-          }}
-        >
-          <div
-            style={{
-              minWidth: 0,
-              flex: 1,
+            flexDirection: 'column',
+            gap: '20px',
+          },
+          box(
+            {
               display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                fontSize: editorial ? 64 : 58,
-                lineHeight: 1.04,
-                fontWeight: editorial ? 600 : 720,
-                letterSpacing: editorial ? '-0.035em' : '-0.045em',
-              }}
-            >
-              {clamp(card.profile.displayName, 60)}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                maxWidth: '700px',
-                color: accentColor,
-                fontSize: 30,
-                lineHeight: 1.24,
-                fontWeight: 620,
-              }}
-            >
-              {clamp(card.profile.profession, 80)}
-            </div>
-            {card.profile.bio ? (
-              <div
-                style={{
+              fontSize: editorial ? 64 : 58,
+              lineHeight: 1.04,
+              fontWeight: editorial ? 600 : 720,
+              letterSpacing: editorial ? '-0.035em' : '-0.045em',
+            },
+            clamp(card.profile.displayName, 60),
+          ),
+          box(
+            {
+              display: 'flex',
+              maxWidth: '700px',
+              color: accentColor,
+              fontSize: 30,
+              lineHeight: 1.24,
+              fontWeight: 620,
+            },
+            clamp(card.profile.profession, 80),
+          ),
+          card.profile.bio
+            ? box(
+                {
                   display: 'flex',
                   maxWidth: '690px',
                   color: theme.muted,
                   fontSize: 21,
                   lineHeight: 1.45,
-                }}
-              >
-                {clamp(card.profile.bio, 150)}
-              </div>
-            ) : null}
-          </div>
-
-          <div
-            style={{
-              width: '190px',
-              height: '190px',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              borderRadius: avatarRadius,
-              border: `3px solid ${accentColor}`,
-              background: dark ? '#293129' : accent.soft,
-              color: accentColor,
-              fontSize: 54,
-              fontWeight: 650,
-            }}
-          >
-            {avatar ? (
-              <img
-                src={avatar}
-                width="190"
-                height="190"
-                alt=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
-              initials(card.profile.displayName)
-            )}
-          </div>
-        </div>
-
-        <div
-          style={{
+                },
+                clamp(card.profile.bio, 150),
+              )
+            : null,
+        ),
+        box(
+          {
+            width: '190px',
+            height: '190px',
+            flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            borderTop: `1px solid ${theme.border}`,
-            paddingTop: '28px',
-            color: theme.muted,
-            fontSize: 18,
-          }}
-        >
-          <span>{card.profile.availabilityText || 'Профессиональные контакты и проекты'}</span>
-          <span style={{ color: theme.text, fontWeight: 700 }}>cardly</span>
-        </div>
-      </div>
-    </div>,
-    {
-      width: 1200,
-      height: 630,
-      headers: {
-        'Cache-Control': 'public, immutable, no-transform, max-age=31536000',
-      },
-    },
+            justifyContent: 'center',
+            overflow: 'hidden',
+            borderRadius: avatarRadius,
+            border: `3px solid ${accentColor}`,
+            background: dark ? '#293129' : accent.soft,
+            color: accentColor,
+            fontSize: 54,
+            fontWeight: 650,
+          },
+          avatarNode,
+        ),
+      ),
+      box(
+        {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderTop: `1px solid ${theme.border}`,
+          paddingTop: '28px',
+          color: theme.muted,
+          fontSize: 18,
+        },
+        text({}, card.profile.availabilityText || 'Профессиональные контакты и проекты'),
+        text({ color: theme.text, fontWeight: 700 }, 'cardly'),
+      ),
+    ),
   )
+
+  return new ImageResponse(image, {
+    width: 1200,
+    height: 630,
+    headers: {
+      'Cache-Control': 'public, immutable, no-transform, max-age=31536000',
+    },
+  })
 }
