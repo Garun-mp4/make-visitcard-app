@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 import { setApiSessionToken } from './api-client'
 import { uploadCardImage } from './image-upload-service'
@@ -32,5 +34,19 @@ describe('uploadCardImage', () => {
         headers: { Authorization: 'Bearer signed-telegram-session' },
       }),
     )
+  })
+
+  it('allows both the Blob API and storage hosts in the production CSP', () => {
+    const vercelConfig = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'vercel.json'), 'utf8'),
+    ) as {
+      headers: Array<{ headers: Array<{ key: string; value: string }> }>
+    }
+    const csp = vercelConfig.headers
+      .flatMap((rule) => rule.headers)
+      .find((header) => header.key === 'Content-Security-Policy')?.value
+
+    expect(csp).toContain("connect-src 'self' https://vercel.com")
+    expect(csp).toContain('https://*.blob.vercel-storage.com')
   })
 })
