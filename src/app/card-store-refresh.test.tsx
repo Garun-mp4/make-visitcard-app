@@ -8,9 +8,11 @@ import { CardStoreProvider, useCardStore } from '@/app/card-store'
 
 const mocks = vi.hoisted<{
   auth: { value: unknown }
+  cardSave: ReturnType<typeof vi.fn>
   loadOwnerDashboard: ReturnType<typeof vi.fn>
 }>(() => ({
   auth: { value: null },
+  cardSave: vi.fn(),
   loadOwnerDashboard: vi.fn(),
 }))
 
@@ -29,7 +31,7 @@ vi.mock('@/features/auth/auth-provider', () => ({
 }))
 
 vi.mock('@/services/card-repository', () => ({
-  cardRepository: { load: vi.fn(), save: vi.fn() },
+  cardRepository: { load: vi.fn(), save: mocks.cardSave },
 }))
 
 vi.mock('@/services/owner-dashboard-service', () => ({
@@ -50,8 +52,24 @@ function RefreshProbe({ identities }: { identities: Array<() => Promise<void>> }
   )
 }
 
-describe('CardStore dashboard refresh', () => {
+function PublicReadyProbe({ statuses }: { statuses: string[] }) {
+  const store = useCardStore()
+  useEffect(() => {
+    statuses.push(store.saveStatus)
+  }, [statuses, store.saveStatus])
+  return (
+    <button onClick={() => void store.ensurePublicCardReady()}>
+      Open synced card · {store.saveStatus}
+    </button>
+  )
+}
+
+describe('CardStore stable operations', () => {
   beforeEach(() => {
+    mocks.cardSave.mockReset().mockResolvedValue({
+      card: demoCard,
+      publicSync: { state: 'synced', syncedAt: demoCard.lastPublishedAt, invalidPaths: [] },
+    })
     mocks.loadOwnerDashboard.mockReset()
     mocks.auth.value = {
       status: 'authenticated',
@@ -88,5 +106,19 @@ describe('CardStore dashboard refresh', () => {
     await waitFor(() => expect(refresh).toHaveTextContent(String(demoStats.totalViews + 1)))
     expect(mocks.loadOwnerDashboard).toHaveBeenCalledTimes(1)
     expect(identities).toHaveLength(1)
+  })
+
+  it('opens an already synced public card without starting a redundant save', async () => {
+    const statuses: string[] = []
+    render(
+      <CardStoreProvider>
+        <PublicReadyProbe statuses={statuses} />
+      </CardStoreProvider>,
+    )
+
+    await userEvent.click(await screen.findByRole('button', { name: /Open synced card/ }))
+
+    expect(mocks.cardSave).not.toHaveBeenCalled()
+    expect(statuses).not.toContain('saving')
   })
 })

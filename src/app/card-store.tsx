@@ -206,7 +206,8 @@ export function CardStoreProvider({ children }: PropsWithChildren) {
   }, [])
 
   const ensurePublicCardReady = useCallback(async () => {
-    await saveNow()
+    if (savingPromise.current) await savingPromise.current
+    else if (pendingSave.current || saveErrorRef.current) await saveNow()
     return Boolean(
       !saveErrorRef.current &&
       cardRef.current?.publication.published &&
