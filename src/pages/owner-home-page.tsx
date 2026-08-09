@@ -55,17 +55,18 @@ export default function OwnerHomePage() {
             : feedback.revealLink(t('profile.copyLink'), publicUrl),
         ),
     )
-  const share = () =>
-    void withPublicCard(
-      () =>
-        void shareOrCopy({ title: card.profile.displayName, url: publicUrl }).then((result) =>
-          result === 'copied'
-            ? feedback.notify(t('feedback.copied'), 'success')
-            : result === 'manual'
-              ? feedback.revealLink(t('common.share'), publicUrl)
-              : feedback.notify(t('feedback.shareOpened'), 'success'),
-        ),
-    )
+  const share = () => {
+    if (!card.publication.published) {
+      void navigate('/app/editor/publish')
+      return
+    }
+    void shareOrCopy({ title: card.profile.displayName, url: publicUrl }).then((result) => {
+      if (result === 'cancelled') return
+      if (result === 'copied') feedback.notify(t('feedback.copied'), 'success')
+      else if (result === 'manual') feedback.revealLink(t('common.share'), publicUrl)
+      else feedback.notify(t('feedback.shareOpened'), 'success')
+    })
+  }
 
   return (
     <main className="owner-mobile-content lg:max-w-[1180px] lg:py-8">

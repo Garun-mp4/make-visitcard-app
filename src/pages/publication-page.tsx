@@ -99,13 +99,13 @@ function PublicationQr({
     }
   }
   const share = () =>
-    void shareOrCopy({ title: ownerName, url }).then((result) =>
-      result === 'copied'
-        ? feedback.notify(l('Ссылка скопирована', 'Link copied'), 'success')
-        : result === 'manual'
-          ? feedback.revealLink(l('Поделиться визиткой', 'Share business card'), url)
-          : feedback.notify(l('Окно отправки открыто', 'Share dialog opened'), 'success'),
-    )
+    void shareOrCopy({ title: ownerName, url }).then((result) => {
+      if (result === 'cancelled') return
+      if (result === 'copied') feedback.notify(l('Ссылка скопирована', 'Link copied'), 'success')
+      else if (result === 'manual')
+        feedback.revealLink(l('Поделиться визиткой', 'Share business card'), url)
+      else feedback.notify(l('Окно отправки открыто', 'Share dialog opened'), 'success')
+    })
 
   if (!compact)
     return (

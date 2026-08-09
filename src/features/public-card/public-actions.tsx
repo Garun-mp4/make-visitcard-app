@@ -26,12 +26,13 @@ export function PublicActions({
   const text = useLocaleText()
   const share = async () => {
     onShare?.()
-    if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'share', 'share')
     const result = await shareOrCopy({
       title: card.profile.displayName,
       text: card.profile.profession,
       url: publicUrl,
     })
+    if (result === 'cancelled') return
+    if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'share', 'share')
     if (result === 'manual')
       feedback.revealLink(text('Поделиться визиткой', 'Share business card'), publicUrl)
     else
