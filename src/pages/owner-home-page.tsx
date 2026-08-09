@@ -158,7 +158,7 @@ export default function OwnerHomePage() {
               {latestLead ? (
                 <button
                   className="text-xs font-semibold text-[var(--accent)]"
-                  onClick={() => navigate('/app/stats')}
+                  onClick={() => navigate('/app/stats/leads')}
                 >
                   {l('Все заявки', 'All leads')}
                 </button>

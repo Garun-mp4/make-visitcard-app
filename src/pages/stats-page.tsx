@@ -1,6 +1,7 @@
-import { BarChart3, Inbox, MoreHorizontal, RefreshCw } from 'lucide-react'
+import { BarChart3, Inbox, RefreshCw } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import type { PeriodStats, StatsPeriod } from '@shared/types'
 import { useCardStore } from '@/app/card-store'
@@ -26,12 +27,27 @@ export default function StatsPage() {
   const { leads, refreshDashboard, setLeadStatus, stats: dashboardStats } = useCardStore()
   const { t, i18n } = useTranslation()
   const l = useLocaleText()
-  const [period, setPeriod] = useState<StatsPeriod>('7')
-  const [tab, setTab] = useState<'overview' | 'leads'>('overview')
+  const location = useLocation()
+  const navigate = useNavigate()
+  const initialPeriod = new URLSearchParams(location.search).get('period')
+  const [period, setPeriod] = useState<StatsPeriod>(
+    initialPeriod === '30' || initialPeriod === 'all' ? initialPeriod : '7',
+  )
+  const [leadFilter, setLeadFilter] = useState<'all' | 'new' | 'read' | 'archived'>('all')
   const [data, setData] = useState<PeriodStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const tab = location.pathname.startsWith('/app/stats/leads') ? 'leads' : 'overview'
+  const newLeadCount = leads.filter((lead) => lead.status === 'new').length
+  const filteredLeads =
+    leadFilter === 'all' ? leads : leads.filter((lead) => lead.status === leadFilter)
+  const periodSearch = `?period=${period}`
+
+  const selectPeriod = (nextPeriod: StatsPeriod) => {
+    setPeriod(nextPeriod)
+    void navigate(`${location.pathname}?period=${nextPeriod}`, { replace: true })
+  }
 
   useEffect(() => {
     void refreshDashboard().catch(() => undefined)
@@ -105,19 +121,34 @@ export default function StatsPage() {
   return (
     <main className="owner-mobile-content lg:max-w-[1180px] lg:py-8">
       <header className="page-header">
-        <h1 className="page-title">{tab === 'overview' ? t('nav.stats') : l('Заявки', 'Leads')}</h1>
-        <button
-          aria-label={
-            tab === 'overview'
-              ? l('Открыть заявки', 'Open leads')
-              : l('Вернуться к статистике', 'Back to statistics')
-          }
-          className="grid size-11 place-items-center rounded-xl text-[var(--text-muted)]"
-          onClick={() => setTab(tab === 'overview' ? 'leads' : 'overview')}
-        >
-          <MoreHorizontal size={20} />
-        </button>
+        <h1 className="page-title">{t('nav.stats')}</h1>
       </header>
+
+      <nav
+        aria-label={l('Раздел статистики', 'Statistics section')}
+        className="mb-3 grid grid-cols-2 rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] p-1 lg:max-w-[420px]"
+      >
+        <NavLink
+          to={`/app/stats${periodSearch}`}
+          end
+          aria-current={tab === 'overview' ? 'page' : undefined}
+          className={`flex min-h-11 items-center justify-center rounded-lg px-3 text-sm transition-[background-color,color,border-color] duration-150 ${tab === 'overview' ? 'border border-[var(--border-strong)] bg-[var(--surface)] font-semibold text-[var(--text-primary)]' : 'border border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+        >
+          {l('Обзор', 'Overview')}
+        </NavLink>
+        <NavLink
+          to={`/app/stats/leads${periodSearch}`}
+          aria-current={tab === 'leads' ? 'page' : undefined}
+          className={`flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm transition-[background-color,color,border-color] duration-150 ${tab === 'leads' ? 'border border-[var(--border-strong)] bg-[var(--surface)] font-semibold text-[var(--text-primary)]' : 'border border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+        >
+          {l('Заявки', 'Leads')}
+          {newLeadCount > 0 ? (
+            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-[var(--accent-contrast)]">
+              {newLeadCount > 99 ? '99+' : newLeadCount}
+            </span>
+          ) : null}
+        </NavLink>
+      </nav>
 
       {tab === 'overview' ? (
         <>
@@ -127,7 +158,7 @@ export default function StatsPage() {
                 key={value}
                 aria-pressed={period === value}
                 className={`min-h-10 rounded-md text-[10px] ${period === value ? 'bg-[var(--surface)] font-semibold shadow-sm' : 'text-[var(--text-muted)]'}`}
-                onClick={() => setPeriod(value)}
+                onClick={() => selectPeriod(value)}
               >
                 {label}
               </button>
@@ -292,7 +323,7 @@ export default function StatsPage() {
                   </h2>
                   <button
                     className="text-xs font-semibold text-[var(--accent)]"
-                    onClick={() => setTab('leads')}
+                    onClick={() => navigate(`/app/stats/leads${periodSearch}`)}
                   >
                     {l('Все заявки', 'All leads')}
                   </button>
@@ -325,21 +356,49 @@ export default function StatsPage() {
         </>
       ) : (
         <section>
-          {leads.length === 0 ? (
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-[var(--surface-secondary)] p-1 sm:grid-cols-4">
+            {(
+              [
+                ['all', l('Все', 'All')],
+                ['new', l('Новые', 'New')],
+                ['read', l('Прочитанные', 'Read')],
+                ['archived', l('Архив', 'Archive')],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={leadFilter === value}
+                className={`min-h-10 min-w-0 rounded-lg px-2 text-xs transition-colors ${leadFilter === value ? 'border border-[var(--border-strong)] bg-[var(--surface)] font-semibold text-[var(--text-primary)]' : 'border border-transparent text-[var(--text-muted)]'}`}
+                onClick={() => setLeadFilter(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {filteredLeads.length === 0 ? (
             <div className="surface grid min-h-64 place-items-center rounded-2xl p-8 text-center">
               <div>
                 <Inbox className="mx-auto text-[var(--accent)]" size={28} />
                 <h2 className="heading-font mb-0 mt-4 text-lg">
-                  {l('Заявок пока нет', 'No leads yet')}
+                  {leads.length === 0
+                    ? l('Заявок пока нет', 'No leads yet')
+                    : l('В этой категории заявок нет', 'No leads in this category')}
                 </h2>
                 <p className="mt-2 text-sm text-[var(--text-muted)]">
-                  {l('Новые обращения появятся здесь.', 'New requests will appear here.')}
+                  {leads.length === 0
+                    ? l(
+                        'Они появятся здесь после отправки формы с визитки.',
+                        'They will appear here after someone submits the form on your card.',
+                      )
+                    : l('Выберите другой статус.', 'Choose another status.')}
                 </p>
               </div>
             </div>
           ) : (
             <div className="grid gap-3">
-              {leads.map((lead) => (
+              {filteredLeads.map((lead) => (
                 <article key={lead.id} className="surface rounded-xl p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

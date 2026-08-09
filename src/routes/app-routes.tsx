@@ -89,6 +89,7 @@ export function AppRoutes() {
             <Route path="editor/appearance" element={<AppearanceEditorPage />} />
             <Route path="editor/publish" element={<PublicationPage />} />
             <Route path="stats" element={<StatsPage />} />
+            <Route path="stats/leads" element={<StatsPage />} />
             <Route path="profile" element={<ProfilePage />} />
           </Route>
         </Route>

@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import StatsPage from './stats-page'
@@ -45,7 +46,11 @@ describe('StatsPage loading state', () => {
   it('leaves the skeleton and shows a retryable error after one failed request', async () => {
     loadOwnerStats.mockRejectedValue(new Error('stats unavailable'))
 
-    render(<StatsPage />)
+    render(
+      <MemoryRouter initialEntries={['/app/stats']}>
+        <StatsPage />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByLabelText('Загрузка статистики')).toBeInTheDocument()
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить статистику')
