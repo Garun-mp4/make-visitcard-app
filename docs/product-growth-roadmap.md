@@ -105,7 +105,7 @@ Cardly должен помогать пройти путь:
 
 ## Milestone 1. Персональное превью ссылки
 
-**Статус:** planned
+**Статус:** implemented, Preview verified
 
 **Приоритет:** P0
 
@@ -194,6 +194,14 @@ interface SharePreview {
 - **Кэш Telegram.** Версионировать image URL; показать владельцу понятное пояснение.
 - **Холодный старт генерации.** Кэшировать готовый результат и держать шаблон лёгким.
 - **Недоступная аватарка.** Всегда иметь deterministic initials fallback.
+
+### Результат реализации
+
+- `/c/:slug` отдаёт crawler-ready HTML с динамическими Open Graph, Twitter Card и canonical metadata до запуска SPA.
+- `/api/public/cards/:slug/og.png` генерирует версионированное изображение 1200×630 из последнего опубликованного snapshot.
+- Реализованы варианты Clean, Dark и Editorial, все пять accent presets, защищённая загрузка Telegram-аватара и fallback на инициалы.
+- На экране публикации отображаются живое preview, состояния синхронизации, ошибка с повтором и пояснение о внешнем кэше.
+- Unit, API и UI-тесты, production build и реальный Vercel Preview smoke test пройдены.
 
 ---
 

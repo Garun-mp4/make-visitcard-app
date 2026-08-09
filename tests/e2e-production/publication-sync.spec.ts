@@ -158,6 +158,16 @@ test('published edits go live and unpublish is serialized', async ({ page }, tes
       }),
     })
   })
+  await page.route('**/api/public/cards/alexey/og.png*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    }),
+  )
   await page.route('**/api/public/cards/alexey', (route) =>
     publicCard
       ? route.fulfill({
@@ -199,6 +209,7 @@ test('published edits go live and unpublish is serialized', async ({ page }, tes
 
   await page.goto('/app/editor/publish')
   await expect(page.getByText('Все сохранённые изменения опубликованы.')).toBeVisible()
+  await expect(page.getByRole('img', { name: 'Превью ссылки на визитку' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /Адрес визитки/ })).toHaveCount(0)
   const widths = testInfo.project.name === 'telegram-mobile' ? [320, 390, 420] : [1440]
   for (const width of widths) {
