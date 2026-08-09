@@ -33,6 +33,10 @@ interface TelegramWebApp {
   expand?(): void
   openLink?(url: string, options?: { try_instant_view?: boolean }): void
   openTelegramLink?(url: string): void
+  downloadFile?(
+    params: { url: string; file_name: string },
+    callback?: (accepted: boolean) => void,
+  ): void
   onEvent?(event: EventName, callback: () => void): void
   offEvent?(event: EventName, callback: () => void): void
 }
@@ -170,5 +174,30 @@ export const telegram = {
     } catch {
       return false
     }
+  },
+  async downloadFile(input: {
+    url: string
+    fileName: string
+  }): Promise<'downloading' | 'cancelled' | 'unsupported'> {
+    const app = webApp()
+    if (!app?.downloadFile) return 'unsupported'
+    let url: URL
+    try {
+      url = new URL(input.url)
+    } catch {
+      return 'unsupported'
+    }
+    const localDevelopmentUrl =
+      url.protocol === 'http:' && (url.hostname === '127.0.0.1' || url.hostname === 'localhost')
+    if (url.protocol !== 'https:' && !localDevelopmentUrl) return 'unsupported'
+    return new Promise((resolve) => {
+      try {
+        app.downloadFile?.({ url: url.toString(), file_name: input.fileName }, (accepted) =>
+          resolve(accepted ? 'downloading' : 'cancelled'),
+        )
+      } catch {
+        resolve('unsupported')
+      }
+    })
   },
 }

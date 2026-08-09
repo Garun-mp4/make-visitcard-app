@@ -6,7 +6,7 @@ import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useQrPng } from '@/components/qr/use-qr-png'
 import { Button } from '@/components/ui/button'
 import { useLocaleText } from '@/i18n/use-locale-text'
-import { downloadQrPng, shareQrPng } from '@/lib/qr-code'
+import { downloadQrPng, qrPngUrl, shareQrPng } from '@/lib/qr-code'
 
 export function QrCodeDialog({
   open,
@@ -27,6 +27,8 @@ export function QrCodeDialog({
   const feedback = useFeedback()
   const { svgRef, asset, failed, retry } = useQrPng(value, slug, open)
   const [sharing, setSharing] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const imageUrl = qrPngUrl(value, slug)
 
   useEffect(() => {
     if (!open) return
@@ -39,17 +41,31 @@ export function QrCodeDialog({
 
   if (!open) return null
 
-  const download = () => {
+  const download = async () => {
     if (!asset) return
-    downloadQrPng(asset)
-    feedback.notify(l('QR-код скачан как PNG', 'QR code downloaded as PNG'), 'success')
+    setDownloading(true)
+    try {
+      const result = await downloadQrPng(asset, imageUrl)
+      if (result === 'cancelled') return
+      feedback.notify(
+        result === 'downloading'
+          ? l('Скачивание PNG началось', 'PNG download started')
+          : l('PNG открыт для скачивания', 'PNG opened for download'),
+        'success',
+      )
+    } catch {
+      feedback.notify(l('Не удалось скачать QR-код', 'Could not download the QR code'), 'error')
+    } finally {
+      setDownloading(false)
+    }
   }
   const share = async () => {
     if (!asset) return
     setSharing(true)
     const result = await shareQrPng(asset, {
       title: l(`QR-код · ${ownerName}`, `QR code · ${ownerName}`),
-      text: value,
+      text: `${l(`Визитка ${ownerName}`, `${ownerName}'s business card`)}\n${value}`,
+      url: imageUrl,
     })
     setSharing(false)
     if (result === 'cancelled') return
@@ -58,14 +74,7 @@ export function QrCodeDialog({
       feedback.notify(l('Окно отправки открыто', 'Share dialog opened'), 'success')
       return
     }
-    downloadQrPng(asset)
-    feedback.notify(
-      l(
-        'Устройство не поддерживает отправку файлов — PNG скачан, его можно прикрепить вручную.',
-        'This device cannot share files — the PNG was downloaded so you can attach it manually.',
-      ),
-      'info',
-    )
+    feedback.revealLink(l('Поделиться QR-кодом', 'Share QR code'), imageUrl)
   }
 
   return (
@@ -132,9 +141,18 @@ export function QrCodeDialog({
         ) : null}
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button variant="secondary" disabled={!asset || sharing} onClick={download}>
+          <Button
+            variant="secondary"
+            disabled={!asset || sharing || downloading}
+            aria-busy={downloading}
+            onClick={() => void download()}
+          >
             <Download size={17} aria-hidden="true" />
-            {asset ? l('Скачать PNG', 'Download PNG') : l('Готовим PNG…', 'Preparing PNG…')}
+            {downloading
+              ? l('Открываем…', 'Opening…')
+              : asset
+                ? l('Скачать PNG', 'Download PNG')
+                : l('Готовим PNG…', 'Preparing PNG…')}
           </Button>
           <Button disabled={!asset || sharing} aria-busy={sharing} onClick={() => void share()}>
             <Share2 size={17} aria-hidden="true" />

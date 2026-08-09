@@ -333,7 +333,7 @@ test('public and publication QR actions use real PNG images', async ({ page }, t
   )
   expect(publicShare).toMatchObject({
     title: 'QR-код · Алексей Волков',
-    text: expect.stringMatching(/\/c\/alexey$/),
+    text: expect.stringMatching(/^Визитка Алексей Волков\n.*\/c\/alexey$/),
     files: [{ name: 'cardly-alexey-qr.png', type: 'image/png', size: expect.any(Number) }],
   })
 
@@ -366,4 +366,87 @@ test('public and publication QR actions use real PNG images', async ({ page }, t
   expect(publicationShare).toMatchObject({
     files: [{ name: 'cardly-alexey-qr.png', type: 'image/png', size: expect.any(Number) }],
   })
+})
+
+test('QR actions use Telegram native fallbacks when its WebView blocks browser actions', async ({
+  page,
+}) => {
+  const installTelegramWebView = () =>
+    page.evaluate(() => {
+      const telegramWindow = window as Window & {
+        Telegram?: {
+          WebApp?: {
+            downloadFile?(
+              params: { url: string; file_name: string },
+              callback?: (accepted: boolean) => void,
+            ): void
+            openTelegramLink?(url: string): void
+          }
+        }
+      }
+      telegramWindow.Telegram = {
+        WebApp: {
+          downloadFile: (params, callback) => {
+            sessionStorage.setItem('cardly-telegram-download', JSON.stringify(params))
+            callback?.(true)
+          },
+          openTelegramLink: (url) => {
+            sessionStorage.setItem('cardly-telegram-share', url)
+          },
+        },
+      }
+      Object.defineProperty(navigator, 'canShare', {
+        configurable: true,
+        value: () => false,
+      })
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: () =>
+          Promise.reject(new TypeError('File sharing is unavailable in Telegram WebView')),
+      })
+    })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/c/alexey')
+  await installTelegramWebView()
+  await page.getByRole('button', { name: 'Показать QR-код' }).click()
+  await expect(page.getByRole('button', { name: 'Скачать PNG' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Скачать PNG' }).click()
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-telegram-download')))
+    .not.toBeNull()
+  const downloadRequest: unknown = JSON.parse(
+    (await page.evaluate(() => sessionStorage.getItem('cardly-telegram-download'))) ?? '{}',
+  )
+  expect(downloadRequest).toEqual({
+    url: expect.stringMatching(/\/api\/public\/cards\/alexey\/qr\.png$/),
+    file_name: 'cardly-alexey-qr.png',
+  })
+
+  await page.getByRole('button', { name: 'Поделиться QR' }).click()
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-telegram-share')))
+    .not.toBeNull()
+  const telegramShare = new URL(
+    (await page.evaluate(() => sessionStorage.getItem('cardly-telegram-share'))) ?? '',
+  )
+  expect(`${telegramShare.origin}${telegramShare.pathname}`).toBe('https://t.me/share/url')
+  expect(telegramShare.searchParams.get('url')).toMatch(/\/api\/public\/cards\/alexey\/qr\.png$/)
+  expect(telegramShare.searchParams.get('text')).toMatch(/\/c\/alexey$/)
+
+  await page.goto('/app/editor/publish')
+  await installTelegramWebView()
+  await page.evaluate(() => {
+    sessionStorage.removeItem('cardly-telegram-download')
+    sessionStorage.removeItem('cardly-telegram-share')
+  })
+  const publicationDownload = page.locator('button:visible', { hasText: 'Скачать PNG' })
+  await publicationDownload.click()
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-telegram-download')))
+    .not.toBeNull()
+  await page.locator('button:visible', { hasText: 'Поделиться QR' }).click()
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-telegram-share')))
+    .not.toBeNull()
 })

@@ -1,9 +1,12 @@
+import { telegram } from './telegram'
+
 export interface QrPngAsset {
   dataUrl: string
   file: File
 }
 
 export type QrShareResult = 'shared' | 'cancelled' | 'unsupported'
+export type QrDownloadResult = 'downloading' | 'cancelled' | 'opened'
 
 function dataUrlToFile(dataUrl: string, fileName: string): File {
   const [header, encoded = ''] = dataUrl.split(',', 2)
@@ -20,6 +23,11 @@ export function qrPngFileName(slug: string): string {
     .replace(/[^a-z0-9-]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return `cardly-${safeSlug || 'card'}-qr.png`
+}
+
+export function qrPngUrl(publicUrl: string, slug: string): string {
+  const origin = new URL(publicUrl, window.location.origin).origin
+  return `${origin}/api/public/cards/${encodeURIComponent(slug)}/qr.png`
 }
 
 export async function createQrPngAsset(
@@ -53,7 +61,21 @@ export async function createQrPngAsset(
   return { dataUrl, file: dataUrlToFile(dataUrl, fileName) }
 }
 
-export function downloadQrPng(asset: QrPngAsset): void {
+export async function downloadQrPng(
+  asset: QrPngAsset,
+  remoteUrl?: string,
+): Promise<QrDownloadResult> {
+  if (remoteUrl) {
+    const nativeResult = await telegram.downloadFile({
+      url: remoteUrl,
+      fileName: asset.file.name,
+    })
+    if (nativeResult === 'downloading' || nativeResult === 'cancelled') return nativeResult
+    if (telegram.available) {
+      telegram.openLink(remoteUrl)
+      return 'opened'
+    }
+  }
   const link = document.createElement('a')
   link.href = asset.dataUrl
   link.download = asset.file.name
@@ -62,17 +84,29 @@ export function downloadQrPng(asset: QrPngAsset): void {
   document.body.append(link)
   link.click()
   link.remove()
+  return 'opened'
 }
 
 export async function shareQrPng(
   asset: QrPngAsset,
-  details: Pick<ShareData, 'title' | 'text'>,
+  details: Pick<ShareData, 'title' | 'text' | 'url'>,
 ): Promise<QrShareResult> {
-  if (typeof navigator.share !== 'function') return 'unsupported'
-  const data: ShareData = { ...details, files: [asset.file] }
-  if (typeof navigator.canShare === 'function' && !navigator.canShare(data)) return 'unsupported'
+  const fileData: ShareData = { title: details.title, text: details.text, files: [asset.file] }
+  if (
+    typeof navigator.share === 'function' &&
+    (typeof navigator.canShare !== 'function' || navigator.canShare(fileData))
+  ) {
+    try {
+      await navigator.share(fileData)
+      return 'shared'
+    } catch (error) {
+      if ((error as { name?: string }).name === 'AbortError') return 'cancelled'
+    }
+  }
+  if (details.url && telegram.shareUrl(details)) return 'shared'
+  if (typeof navigator.share !== 'function' || !details.url) return 'unsupported'
   try {
-    await navigator.share(data)
+    await navigator.share(details)
     return 'shared'
   } catch (error) {
     return (error as { name?: string }).name === 'AbortError' ? 'cancelled' : 'unsupported'

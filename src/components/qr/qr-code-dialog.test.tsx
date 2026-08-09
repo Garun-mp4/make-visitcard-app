@@ -17,6 +17,7 @@ vi.mock('@/lib/qr-code', () => ({
   downloadQrPng,
   shareQrPng,
   qrPngFileName: (slug: string) => `cardly-${slug}-qr.png`,
+  qrPngUrl: (url: string, slug: string) => `${new URL(url).origin}/api/public/cards/${slug}/qr.png`,
 }))
 vi.mock('@/components/feedback/feedback-provider', () => ({
   useFeedback: () => ({ notify, revealLink: vi.fn() }),
@@ -45,7 +46,10 @@ describe('QrCodeDialog', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Скачать PNG' })).toBeEnabled())
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Скачать PNG' }))
-    expect(downloadQrPng).toHaveBeenCalledWith(asset)
+    expect(downloadQrPng).toHaveBeenCalledWith(
+      asset,
+      'https://cardly.test/api/public/cards/alexey/qr.png',
+    )
   })
 
   it('shares the QR image file instead of sharing only its URL', async () => {
@@ -66,7 +70,8 @@ describe('QrCodeDialog', () => {
 
     expect(shareQrPng).toHaveBeenCalledWith(asset, {
       title: 'QR-код · Алексей Волков',
-      text: 'https://cardly.test/c/alexey',
+      text: 'Визитка Алексей Волков\nhttps://cardly.test/c/alexey',
+      url: 'https://cardly.test/api/public/cards/alexey/qr.png',
     })
   })
 })

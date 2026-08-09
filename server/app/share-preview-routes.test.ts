@@ -6,7 +6,7 @@ import { demoCard } from '../../shared/demo-data.js'
 import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
 import type * as Repository from '../db/repository.js'
 
-const mocks = vi.hoisted(() => ({ getPublicCard: vi.fn() }))
+const mocks = vi.hoisted(() => ({ getPublicCard: vi.fn(), renderQrPng: vi.fn() }))
 
 vi.mock('../db/repository.js', async (importOriginal) => ({
   ...(await importOriginal<typeof Repository>()),
@@ -18,6 +18,10 @@ vi.mock('../social/card-page-template.js', () => ({
     Promise.resolve(
       '<!doctype html><html><head><meta name="description" content="Cardly"><title>Cardly</title></head><body><div id="root"></div><script src="/assets/app.js"></script></body></html>',
     ),
+}))
+
+vi.mock('../social/qr-image.js', () => ({
+  renderQrPng: mocks.renderQrPng,
 }))
 
 import { createApp } from './create-app.js'
@@ -33,6 +37,9 @@ describe('public share preview routes', () => {
   beforeEach(() => {
     mocks.getPublicCard.mockReset()
     mocks.getPublicCard.mockResolvedValue(publicCard)
+    mocks.renderQrPng.mockResolvedValue(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    )
   })
 
   it('returns a crawler-ready HTML shell for a published card', async () => {
@@ -71,12 +78,28 @@ describe('public share preview routes', () => {
     expect(response.headers['cache-control']).toContain('immutable')
   })
 
-  it.each(['/api/public/page/missing', '/api/public/cards/missing/og.png'])(
-    'does not expose an unpublished card through %s',
-    async (path) => {
-      mocks.getPublicCard.mockResolvedValueOnce(null)
-      const response = await request(app).get(path).expect(404)
-      expect(response.body.code).toBe('card_not_found')
-    },
-  )
+  it('serves a downloadable QR PNG for Telegram native downloads', async () => {
+    const response = await request(app)
+      .get('/api/public/cards/alexey/qr.png')
+      .set('Host', 'cardly.example')
+      .set('X-Forwarded-Proto', 'https')
+      .expect(200)
+
+    expect(response.type).toBe('image/png')
+    expect(response.headers['content-disposition']).toBe(
+      'attachment; filename="cardly-alexey-qr.png"',
+    )
+    expect(response.headers['access-control-allow-origin']).toBe('https://web.telegram.org')
+    expect(mocks.renderQrPng).toHaveBeenCalledWith('https://cardly.example/c/alexey')
+  })
+
+  it.each([
+    '/api/public/page/missing',
+    '/api/public/cards/missing/og.png',
+    '/api/public/cards/missing/qr.png',
+  ])('does not expose an unpublished card through %s', async (path) => {
+    mocks.getPublicCard.mockResolvedValueOnce(null)
+    const response = await request(app).get(path).expect(404)
+    expect(response.body.code).toBe('card_not_found')
+  })
 })

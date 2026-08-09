@@ -38,6 +38,7 @@ import { AppError } from '../utils/app-error.js'
 import { logger } from '../utils/logger.js'
 import { loadPublicCardTemplate } from '../social/card-page-template.js'
 import { renderOpenGraphImage } from '../social/open-graph-image.js'
+import { renderQrPng } from '../social/qr-image.js'
 import { buildSharePreviewMetadata, renderPublicCardHtml } from '../social/share-preview.js'
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>
@@ -211,6 +212,22 @@ export function registerRoutes(router: Router) {
       const image = await renderOpenGraphImage(card)
       image.headers.forEach((value, key) => res.setHeader(key, value))
       res.status(image.status).send(Buffer.from(await image.arrayBuffer()))
+    }),
+  )
+
+  router.get(
+    '/api/public/cards/:slug/qr.png',
+    route(async (req, res) => {
+      const slug = slugSchema.parse(req.params.slug)
+      const card = await getPublicCard(slug)
+      if (!card) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+      const fileName = `cardly-${slug}-qr.png`
+      const image = await renderQrPng(`${appOrigin(req)}/c/${slug}`)
+      res.setHeader('Content-Type', 'image/png')
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+      res.setHeader('Access-Control-Allow-Origin', 'https://web.telegram.org')
+      res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
+      res.status(200).send(image)
     }),
   )
 

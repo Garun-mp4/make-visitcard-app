@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button'
 import { clientEnv } from '@/config/client-env'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { useLocaleText } from '@/i18n/use-locale-text'
-import { downloadQrPng, shareQrPng } from '@/lib/qr-code'
+import { downloadQrPng, qrPngUrl, shareQrPng } from '@/lib/qr-code'
 import { copyText } from '@/lib/utils'
 import { ApiError, apiRequest } from '@/services/api-client'
 
@@ -200,20 +200,36 @@ function PublicationQr({
   const feedback = useFeedback()
   const { svgRef, asset, failed, retry } = useQrPng(url, slug)
   const [sharing, setSharing] = useState(false)
-  const downloadQr = () => {
+  const [downloading, setDownloading] = useState(false)
+  const imageUrl = qrPngUrl(url, slug)
+  const downloadQr = async () => {
     if (!asset) {
       feedback.notify(l('Не удалось подготовить QR-код', 'Could not prepare the QR code'), 'error')
       return
     }
-    downloadQrPng(asset)
-    feedback.notify(l('QR-код скачан как PNG', 'QR code downloaded as PNG'), 'success')
+    setDownloading(true)
+    try {
+      const result = await downloadQrPng(asset, imageUrl)
+      if (result === 'cancelled') return
+      feedback.notify(
+        result === 'downloading'
+          ? l('Скачивание PNG началось', 'PNG download started')
+          : l('PNG открыт для скачивания', 'PNG opened for download'),
+        'success',
+      )
+    } catch {
+      feedback.notify(l('Не удалось скачать QR-код', 'Could not download the QR code'), 'error')
+    } finally {
+      setDownloading(false)
+    }
   }
   const share = async () => {
     if (!asset) return
     setSharing(true)
     const result = await shareQrPng(asset, {
       title: l(`QR-код · ${ownerName}`, `QR code · ${ownerName}`),
-      text: url,
+      text: `${l(`Визитка ${ownerName}`, `${ownerName}'s business card`)}\n${url}`,
+      url: imageUrl,
     })
     setSharing(false)
     if (result === 'cancelled') return
@@ -221,14 +237,7 @@ function PublicationQr({
       feedback.notify(l('Окно отправки открыто', 'Share dialog opened'), 'success')
       return
     }
-    downloadQrPng(asset)
-    feedback.notify(
-      l(
-        'Устройство не поддерживает отправку файлов — PNG скачан, его можно прикрепить вручную.',
-        'This device cannot share files — the PNG was downloaded so you can attach it manually.',
-      ),
-      'info',
-    )
+    feedback.revealLink(l('Поделиться QR-кодом', 'Share QR code'), imageUrl)
   }
 
   if (!compact)
@@ -256,9 +265,19 @@ function PublicationQr({
             {l('Не удалось подготовить PNG · Повторить', 'Could not prepare PNG · Retry')}
           </button>
         ) : null}
-        <Button variant="secondary" fullWidth disabled={!asset || sharing} onClick={downloadQr}>
+        <Button
+          variant="secondary"
+          fullWidth
+          disabled={!asset || sharing || downloading}
+          aria-busy={downloading}
+          onClick={() => void downloadQr()}
+        >
           <Download size={17} />
-          {asset ? l('Скачать PNG', 'Download PNG') : l('Готовим PNG…', 'Preparing PNG…')}
+          {downloading
+            ? l('Открываем…', 'Opening…')
+            : asset
+              ? l('Скачать PNG', 'Download PNG')
+              : l('Готовим PNG…', 'Preparing PNG…')}
         </Button>
         <Button fullWidth disabled={!asset || sharing} onClick={() => void share()}>
           <Share2 size={17} />
@@ -304,12 +323,17 @@ function PublicationQr({
             <Button
               className="min-w-0 px-2 text-xs"
               variant="secondary"
-              disabled={!asset || sharing}
-              onClick={downloadQr}
+              disabled={!asset || sharing || downloading}
+              aria-busy={downloading}
+              onClick={() => void downloadQr()}
             >
               <Download className="shrink-0" size={16} />
               <span className="truncate">
-                {asset ? l('Скачать PNG', 'Download PNG') : l('Готовим…', 'Preparing…')}
+                {downloading
+                  ? l('Открываем…', 'Opening…')
+                  : asset
+                    ? l('Скачать PNG', 'Download PNG')
+                    : l('Готовим…', 'Preparing…')}
               </span>
             </Button>
             <Button
