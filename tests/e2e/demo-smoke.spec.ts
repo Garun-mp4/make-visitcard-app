@@ -212,3 +212,43 @@ test('statistics exposes leads as a visible section and keeps the period', async
     await page.evaluate(() => document.documentElement.clientWidth),
   )
 })
+
+test('owner and public card Share buttons open the native share sheet', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: (data: ShareData) => {
+        const calls = JSON.parse(
+          sessionStorage.getItem('cardly-share-calls') ?? '[]',
+        ) as ShareData[]
+        sessionStorage.setItem('cardly-share-calls', JSON.stringify([...calls, data]))
+        return Promise.resolve()
+      },
+    })
+  })
+
+  await page.goto('/app/card')
+  await page.getByRole('button', { name: 'Поделиться', exact: true }).first().click()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (JSON.parse(sessionStorage.getItem('cardly-share-calls') ?? '[]') as ShareData[])[0],
+      ),
+    )
+    .toMatchObject({ title: 'Алексей Волков', url: expect.stringMatching(/\/c\/alexey$/) })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/c/alexey')
+  await page.getByRole('button', { name: 'Поделиться', exact: true }).click()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (JSON.parse(sessionStorage.getItem('cardly-share-calls') ?? '[]') as ShareData[])[1],
+      ),
+    )
+    .toMatchObject({
+      title: 'Алексей Волков',
+      text: 'Product designer и frontend-разработчик',
+      url: expect.stringMatching(/\/c\/alexey$/),
+    })
+})
