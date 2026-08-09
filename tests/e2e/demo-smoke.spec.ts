@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('cardly-locale', 'ru'))
@@ -277,4 +278,92 @@ test('owner and public card Share buttons open the native share sheet', async ({
       text: 'Product designer и frontend-разработчик',
       url: expect.stringMatching(/\/c\/alexey$/),
     })
+})
+
+test('public and publication QR actions use real PNG images', async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: (data: ShareData) => Boolean(data.files?.length),
+    })
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: (data: ShareData) => {
+        sessionStorage.setItem(
+          'cardly-qr-share',
+          JSON.stringify({
+            title: data.title,
+            text: data.text,
+            files: Array.from(data.files ?? []).map((file) => ({
+              name: file.name,
+              type: file.type,
+              size: file.size,
+            })),
+          }),
+        )
+        return Promise.resolve()
+      },
+    })
+  })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/c/alexey')
+  await page.getByRole('button', { name: 'Показать QR-код' }).click()
+  await expect(page.getByRole('dialog', { name: 'QR-код визитки' })).toBeVisible()
+  await expect(page.getByRole('img', { name: 'QR-код визитки' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Скачать PNG' })).toBeEnabled()
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Скачать PNG' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe('cardly-alexey-qr.png')
+  const downloadedPath = await download.path()
+  expect(downloadedPath).not.toBeNull()
+  if (!downloadedPath) throw new Error('Downloaded QR path is unavailable')
+  expect((await readFile(downloadedPath)).subarray(0, 8)).toEqual(
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  )
+
+  await page.getByRole('button', { name: 'Поделиться QR' }).click()
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-qr-share')))
+    .not.toBeNull()
+  const publicShare: unknown = JSON.parse(
+    (await page.evaluate(() => sessionStorage.getItem('cardly-qr-share'))) ?? '{}',
+  )
+  expect(publicShare).toMatchObject({
+    title: 'QR-код · Алексей Волков',
+    text: expect.stringMatching(/\/c\/alexey$/),
+    files: [{ name: 'cardly-alexey-qr.png', type: 'image/png', size: expect.any(Number) }],
+  })
+
+  await page.setViewportSize(
+    testInfo.project.name === 'desktop'
+      ? { width: 1440, height: 1024 }
+      : { width: 320, height: 844 },
+  )
+  await page.goto('/app/editor/publish')
+  const publicationDownload = page.locator('button:visible', { hasText: 'Скачать PNG' })
+  await expect(publicationDownload).toBeEnabled()
+  const publicationDownloadPromise = page.waitForEvent('download')
+  await publicationDownload.click()
+  const publicationFile = await publicationDownloadPromise
+  expect(publicationFile.suggestedFilename()).toBe('cardly-alexey-qr.png')
+  const publicationPath = await publicationFile.path()
+  expect(publicationPath).not.toBeNull()
+  if (!publicationPath) throw new Error('Publication QR path is unavailable')
+  expect((await readFile(publicationPath)).subarray(0, 8)).toEqual(
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  )
+
+  await page.locator('button:visible', { hasText: 'Поделиться QR' }).click()
+  await expect
+    .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-qr-share')))
+    .not.toBeNull()
+  const publicationShare: unknown = JSON.parse(
+    (await page.evaluate(() => sessionStorage.getItem('cardly-qr-share'))) ?? '{}',
+  )
+  expect(publicationShare).toMatchObject({
+    files: [{ name: 'cardly-alexey-qr.png', type: 'image/png', size: expect.any(Number) }],
+  })
 })

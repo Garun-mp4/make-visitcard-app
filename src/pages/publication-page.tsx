@@ -17,11 +17,12 @@ import type { SaveError } from '@/app/card-store'
 import { useCardStore } from '@/app/card-store'
 import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
 import { useFeedback } from '@/components/feedback/feedback-provider'
+import { useQrPng } from '@/components/qr/use-qr-png'
 import { Button } from '@/components/ui/button'
 import { clientEnv } from '@/config/client-env'
 import { EditorShell } from '@/features/editor/editor-shell'
 import { useLocaleText } from '@/i18n/use-locale-text'
-import { shareOrCopy } from '@/lib/share'
+import { downloadQrPng, shareQrPng } from '@/lib/qr-code'
 import { copyText } from '@/lib/utils'
 import { ApiError, apiRequest } from '@/services/api-client'
 
@@ -183,14 +184,12 @@ function SharePreviewCard({
 }
 
 function PublicationQr({
-  id,
   url,
   slug,
   ownerName,
   compact = false,
   onPreview,
 }: {
-  id: string
   url: string
   slug: string
   ownerName: string
@@ -199,47 +198,51 @@ function PublicationQr({
 }) {
   const l = useLocaleText()
   const feedback = useFeedback()
+  const { svgRef, asset, failed, retry } = useQrPng(url, slug)
+  const [sharing, setSharing] = useState(false)
   const downloadQr = () => {
-    const svg = document.getElementById(id)
-    if (!svg) {
+    if (!asset) {
       feedback.notify(l('Не удалось подготовить QR-код', 'Could not prepare the QR code'), 'error')
       return
     }
-    try {
-      const blob = new Blob([new XMLSerializer().serializeToString(svg)], {
-        type: 'image/svg+xml',
-      })
-      const objectUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = `cardly-${slug}-qr.svg`
-      document.body.append(link)
-      link.click()
-      link.remove()
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000)
-      feedback.notify(l('QR-код скачан', 'QR code downloaded'), 'success')
-    } catch {
-      feedback.notify(l('Не удалось скачать QR-код', 'Could not download the QR code'), 'error')
-    }
+    downloadQrPng(asset)
+    feedback.notify(l('QR-код скачан как PNG', 'QR code downloaded as PNG'), 'success')
   }
-  const share = () =>
-    void shareOrCopy({ title: ownerName, url }).then((result) => {
-      if (result === 'cancelled') return
-      if (result === 'copied') feedback.notify(l('Ссылка скопирована', 'Link copied'), 'success')
-      else if (result === 'manual')
-        feedback.revealLink(l('Поделиться визиткой', 'Share business card'), url)
-      else feedback.notify(l('Окно отправки открыто', 'Share dialog opened'), 'success')
+  const share = async () => {
+    if (!asset) return
+    setSharing(true)
+    const result = await shareQrPng(asset, {
+      title: l(`QR-код · ${ownerName}`, `QR code · ${ownerName}`),
+      text: url,
     })
+    setSharing(false)
+    if (result === 'cancelled') return
+    if (result === 'shared') {
+      feedback.notify(l('Окно отправки открыто', 'Share dialog opened'), 'success')
+      return
+    }
+    downloadQrPng(asset)
+    feedback.notify(
+      l(
+        'Устройство не поддерживает отправку файлов — PNG скачан, его можно прикрепить вручную.',
+        'This device cannot share files — the PNG was downloaded so you can attach it manually.',
+      ),
+      'info',
+    )
+  }
 
   if (!compact)
     return (
       <div className="grid content-start gap-4">
         <div className="surface mx-auto grid aspect-square w-full max-w-56 place-items-center rounded-2xl p-5">
           <QRCodeSVG
-            id={id}
+            ref={svgRef}
             value={url}
+            title={l('QR-код визитки', 'Business card QR code')}
+            role="img"
+            aria-label={l('QR-код визитки', 'Business card QR code')}
             size={176}
-            level="M"
+            level="H"
             marginSize={2}
             bgColor="#ffffff"
             fgColor="#183d2e"
@@ -248,13 +251,22 @@ function PublicationQr({
         <p className="m-0 text-center text-xs text-[var(--text-muted)]">
           {l('Подходит для печати и публикации в соцсетях.', 'Ready for print and social media.')}
         </p>
-        <Button variant="secondary" fullWidth onClick={downloadQr}>
+        {failed ? (
+          <button className="text-xs font-semibold text-[var(--warning)]" onClick={retry}>
+            {l('Не удалось подготовить PNG · Повторить', 'Could not prepare PNG · Retry')}
+          </button>
+        ) : null}
+        <Button variant="secondary" fullWidth disabled={!asset || sharing} onClick={downloadQr}>
           <Download size={17} />
-          {l('Скачать QR', 'Download QR')}
+          {asset ? l('Скачать PNG', 'Download PNG') : l('Готовим PNG…', 'Preparing PNG…')}
         </Button>
-        <Button fullWidth onClick={share}>
+        <Button fullWidth disabled={!asset || sharing} onClick={() => void share()}>
           <Share2 size={17} />
-          {l('Поделиться', 'Share')}
+          {sharing
+            ? l('Открываем…', 'Opening…')
+            : asset
+              ? l('Поделиться QR', 'Share QR')
+              : l('Готовим QR…', 'Preparing QR…')}
         </Button>
         {onPreview ? (
           <Button variant="secondary" fullWidth onClick={onPreview}>
@@ -269,24 +281,48 @@ function PublicationQr({
     <div className="grid min-w-0 grid-cols-[minmax(0,128px)_minmax(0,1fr)] gap-3">
       <div className="surface grid aspect-square min-w-0 place-items-center rounded-2xl p-2">
         <QRCodeSVG
-          id={id}
+          ref={svgRef}
           value={url}
+          title={l('QR-код визитки', 'Business card QR code')}
+          role="img"
+          aria-label={l('QR-код визитки', 'Business card QR code')}
           size={104}
-          level="M"
+          level="H"
           marginSize={1}
           bgColor="#ffffff"
           fgColor="#183d2e"
         />
       </div>
       <div className="grid min-w-0 content-center gap-2">
-        <Button className="min-w-0 px-2 text-xs" variant="secondary" onClick={downloadQr}>
-          <Download className="shrink-0" size={16} />
-          <span className="truncate">{l('Скачать QR', 'Download QR')}</span>
-        </Button>
-        <Button className="min-w-0 px-2 text-xs" variant="secondary" onClick={share}>
-          <Share2 className="shrink-0" size={16} />
-          <span className="truncate">{l('Поделиться', 'Share')}</span>
-        </Button>
+        {failed ? (
+          <button className="text-left text-xs font-semibold text-[var(--warning)]" onClick={retry}>
+            <RefreshCw className="mr-1 inline" size={14} aria-hidden="true" />
+            {l('Повторить', 'Retry')}
+          </button>
+        ) : (
+          <>
+            <Button
+              className="min-w-0 px-2 text-xs"
+              variant="secondary"
+              disabled={!asset || sharing}
+              onClick={downloadQr}
+            >
+              <Download className="shrink-0" size={16} />
+              <span className="truncate">
+                {asset ? l('Скачать PNG', 'Download PNG') : l('Готовим…', 'Preparing…')}
+              </span>
+            </Button>
+            <Button
+              className="min-w-0 px-2 text-xs"
+              variant="secondary"
+              disabled={!asset || sharing}
+              onClick={() => void share()}
+            >
+              <Share2 className="shrink-0" size={16} />
+              <span className="truncate">{l('Поделиться QR', 'Share QR')}</span>
+            </Button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -507,7 +543,6 @@ export default function PublicationPage() {
       desktopAside={
         published ? (
           <PublicationQr
-            id="publication-qr-desktop"
             url={publicUrl}
             slug={slug}
             ownerName={card.profile.displayName}
@@ -591,13 +626,7 @@ export default function PublicationPage() {
 
       {published ? (
         <div className="lg:hidden">
-          <PublicationQr
-            id="publication-qr-mobile"
-            url={publicUrl}
-            slug={slug}
-            ownerName={card.profile.displayName}
-            compact
-          />
+          <PublicationQr url={publicUrl} slug={slug} ownerName={card.profile.displayName} compact />
         </div>
       ) : null}
 

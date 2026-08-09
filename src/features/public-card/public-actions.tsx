@@ -1,11 +1,14 @@
 import { Bookmark, QrCode, Share2 } from 'lucide-react'
+import { useState } from 'react'
 
 import type { CardView } from '@shared/types'
 import { copyText } from '@/lib/utils'
 import { downloadVCard } from '@/lib/vcard'
 import { useFeedback } from '@/components/feedback/feedback-provider'
+import { QrCodeDialog } from '@/components/qr/qr-code-dialog'
 import { useLocaleText } from '@/i18n/use-locale-text'
 import { usePublicCardShare } from '@/features/public-card/use-public-card-share'
+import { recordPublicEvent } from '@/services/public-analytics'
 
 export function PublicActions({
   card,
@@ -22,7 +25,20 @@ export function PublicActions({
 }) {
   const feedback = useFeedback()
   const text = useLocaleText()
+  const [qrOpen, setQrOpen] = useState(false)
   const share = usePublicCardShare({ card, publicUrl, analyticsEnabled, onShare })
+  const qrDialog = (
+    <QrCodeDialog
+      open={qrOpen}
+      value={publicUrl}
+      slug={card.publication.slug}
+      ownerName={card.profile.displayName}
+      onClose={() => setQrOpen(false)}
+      onShared={() => {
+        if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'share', 'qr')
+      }}
+    />
+  )
   const save = () => {
     try {
       downloadVCard(card)
@@ -38,39 +54,45 @@ export function PublicActions({
 
   if (variant === 'editorial')
     return (
-      <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.1em] text-[#6c5a48]">
-        <button onClick={save}>{text('Сохранить', 'Save')}</button>
-        <span aria-hidden="true">·</span>
-        <button onClick={() => void share()}>{text('Поделиться', 'Share')}</button>
-      </div>
+      <>
+        <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.1em] text-[#6c5a48]">
+          <button onClick={save}>{text('Сохранить', 'Save')}</button>
+          <span aria-hidden="true">·</span>
+          <button onClick={() => void share()}>{text('Поделиться', 'Share')}</button>
+        </div>
+        {qrDialog}
+      </>
     )
 
   const round = variant === 'dark'
   return (
-    <div className="flex gap-2">
-      <button
-        aria-label={text('Сохранить визитку', 'Save business card')}
-        onClick={save}
-        className={`grid size-10 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
-      >
-        <Bookmark size={18} aria-hidden="true" />
-      </button>
-      <button
-        aria-label={text('Поделиться', 'Share')}
-        onClick={() => void share()}
-        className={`grid size-10 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
-      >
-        <Share2 size={18} aria-hidden="true" />
-      </button>
-      {!round ? (
+    <>
+      <div className="flex gap-2">
         <button
-          aria-label={text('Показать QR-код', 'Show QR code')}
-          onClick={() => feedback.revealLink(text('QR-код визитки', 'Business card QR'), publicUrl)}
-          className="grid size-10 place-items-center rounded-[10px] border border-[#e1e4de] bg-white text-[#444a42]"
+          aria-label={text('Сохранить визитку', 'Save business card')}
+          onClick={save}
+          className={`grid size-10 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
         >
-          <QrCode size={18} aria-hidden="true" />
+          <Bookmark size={18} aria-hidden="true" />
         </button>
-      ) : null}
-    </div>
+        <button
+          aria-label={text('Поделиться', 'Share')}
+          onClick={() => void share()}
+          className={`grid size-10 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
+        >
+          <Share2 size={18} aria-hidden="true" />
+        </button>
+        {!round ? (
+          <button
+            aria-label={text('Показать QR-код', 'Show QR code')}
+            onClick={() => setQrOpen(true)}
+            className="grid size-10 place-items-center rounded-[10px] border border-[#e1e4de] bg-white text-[#444a42]"
+          >
+            <QrCode size={18} aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+      {qrDialog}
+    </>
   )
 }

@@ -34,4 +34,13 @@ describe('PublicActions native sharing', () => {
       url: 'https://cardly.test/c/alexey',
     })
   })
+
+  it('opens a QR dialog instead of revealing the plain card link', async () => {
+    render(<PublicActions card={demoCard} publicUrl="https://cardly.test/c/alexey" />)
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Показать QR-код' }))
+
+    expect(screen.getByRole('dialog', { name: 'QR-код визитки' })).toBeInTheDocument()
+    expect(screen.getByTitle('QR-код визитки')).toBeInTheDocument()
+    expect(revealLink).not.toHaveBeenCalled()
+  })
 })
