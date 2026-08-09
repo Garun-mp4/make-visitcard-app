@@ -126,6 +126,23 @@ test('editor and profile headers do not show inert overflow menus', async ({ pag
   }
 })
 
+test('repeating initial setup requires explicit confirmation', async ({ page }) => {
+  await page.goto('/app/profile')
+  await page.getByRole('button', { name: 'Повторить первичную настройку' }).click()
+
+  const dialog = page.getByRole('alertdialog', { name: 'Повторить первичную настройку?' })
+  await expect(dialog).toBeVisible()
+  await expect(page).toHaveURL(/\/app\/profile$/)
+
+  await dialog.getByRole('button', { name: 'Отмена' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page).toHaveURL(/\/app\/profile$/)
+
+  await page.getByRole('button', { name: 'Повторить первичную настройку' }).click()
+  await dialog.getByRole('button', { name: 'Повторить' }).click()
+  await expect(page).toHaveURL(/\/app\/onboarding\/revisit$/)
+})
+
 test('new editor rows start empty and language changes the whole navigation', async ({ page }) => {
   await page.goto('/app/editor/contacts')
   await page.getByRole('button', { name: 'Добавить' }).click()

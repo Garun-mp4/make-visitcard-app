@@ -1,7 +1,9 @@
 import { Bell, Copy, ExternalLink, Languages, RotateCcw, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useCardStore } from '@/app/card-store'
+import { ConfirmDialog } from '@/components/feedback/confirm-dialog'
 import { Avatar } from '@/components/ui/avatar'
 import { changeLocale } from '@/i18n'
 import { copyText } from '@/lib/utils'
@@ -11,6 +13,7 @@ import { useLocaleText } from '@/i18n/use-locale-text'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
+  const [confirmRevisit, setConfirmRevisit] = useState(false)
   const { card, ensurePublicCardReady, owner, preferences, setPreferences } = useCardStore()
   const feedback = useFeedback()
   const { t } = useTranslation()
@@ -122,10 +125,7 @@ export default function ProfilePage() {
           [
             RotateCcw,
             l('Повторить первичную настройку', 'Repeat initial setup'),
-            () => {
-              sessionStorage.removeItem('cardly-onboarding-revisit-step')
-              void navigate('/app/onboarding/revisit')
-            },
+            () => setConfirmRevisit(true),
           ],
         ].map(([Icon, label, action]) => {
           const I = Icon as typeof Languages
@@ -145,6 +145,22 @@ export default function ProfilePage() {
         <ShieldCheck size={17} className="shrink-0" />
         {t('profile.privacy')}
       </p>
+      <ConfirmDialog
+        open={confirmRevisit}
+        title={l('Повторить первичную настройку?', 'Repeat initial setup?')}
+        description={l(
+          'Вы снова пройдёте все шаги настройки. Текущие данные визитки не будут удалены.',
+          'You will go through every setup step again. Your current card data will not be deleted.',
+        )}
+        confirmLabel={l('Повторить', 'Repeat')}
+        cancelLabel={l('Отмена', 'Cancel')}
+        onCancel={() => setConfirmRevisit(false)}
+        onConfirm={() => {
+          setConfirmRevisit(false)
+          sessionStorage.removeItem('cardly-onboarding-revisit-step')
+          void navigate('/app/onboarding/revisit')
+        }}
+      />
     </main>
   )
 }
