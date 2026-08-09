@@ -20,8 +20,10 @@ const knownPaths = [
   '/api/images/delete',
   '/api/leads/:id',
   '/api/public/cards/:slug',
+  '/api/public/cards/:slug/og.png',
   '/api/public/cards/:slug/leads',
   '/api/public/cards/:slug/events',
+  '/api/public/page/:slug',
   '/api/health',
 ]
 

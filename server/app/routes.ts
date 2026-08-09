@@ -36,6 +36,9 @@ import { enforceRateLimit } from '../rate-limit/database-rate-limit.js'
 import { notifyLeadOwner } from '../telegram/bot.js'
 import { AppError } from '../utils/app-error.js'
 import { logger } from '../utils/logger.js'
+import { loadPublicCardTemplate } from '../social/card-page-template.js'
+import { renderOpenGraphImage } from '../social/open-graph-image.js'
+import { buildSharePreviewMetadata, renderPublicCardHtml } from '../social/share-preview.js'
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>
 const route = (handler: AsyncHandler) => (req: Request, res: Response, next: NextFunction) =>
@@ -180,6 +183,34 @@ export function registerRoutes(router: Router) {
         card: result.card,
         publicSync: { state: 'not_published', syncedAt: null, invalidPaths: [] },
       })
+    }),
+  )
+
+  router.get(
+    '/api/public/page/:slug',
+    route(async (req, res) => {
+      const slug = slugSchema.parse(req.params.slug)
+      const card = await getPublicCard(slug)
+      if (!card) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+      const metadata = buildSharePreviewMetadata(card, appOrigin(req))
+      const html = renderPublicCardHtml(await loadPublicCardTemplate(), metadata)
+      res.setHeader('Content-Type', 'text/html; charset=utf-8')
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+      res.setHeader('CDN-Cache-Control', 'max-age=0, stale-while-revalidate=30')
+      res.setHeader('Vary', 'Accept-Encoding')
+      res.status(200).send(html)
+    }),
+  )
+
+  router.get(
+    '/api/public/cards/:slug/og.png',
+    route(async (req, res) => {
+      const slug = slugSchema.parse(req.params.slug)
+      const card = await getPublicCard(slug)
+      if (!card) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+      const image = await renderOpenGraphImage(card)
+      image.headers.forEach((value, key) => res.setHeader(key, value))
+      res.status(image.status).send(Buffer.from(await image.arrayBuffer()))
     }),
   )
 
