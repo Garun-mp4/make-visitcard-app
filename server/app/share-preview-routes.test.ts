@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { demoCard } from '../../shared/demo-data.js'
 import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
+import type * as Repository from '../db/repository.js'
 
 const mocks = vi.hoisted(() => ({ getPublicCard: vi.fn() }))
 
 vi.mock('../db/repository.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../db/repository.js')>()),
+  ...(await importOriginal<typeof Repository>()),
   getPublicCard: mocks.getPublicCard,
 }))
 
@@ -51,10 +52,12 @@ describe('public share preview routes', () => {
 
   it('returns a 1200x630 PNG response for the published card', async () => {
     const response = await request(app).get('/api/public/cards/alexey/og.png?v=preview').expect(200)
+    const body: unknown = response.body
 
     expect(response.type).toBe('image/png')
-    expect(Buffer.isBuffer(response.body)).toBe(true)
-    expect(response.body.subarray(0, 8)).toEqual(
+    expect(Buffer.isBuffer(body)).toBe(true)
+    if (!Buffer.isBuffer(body)) throw new Error('Expected a PNG buffer')
+    expect(body.subarray(0, 8)).toEqual(
       Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     )
     expect(response.headers['cache-control']).toContain('immutable')
