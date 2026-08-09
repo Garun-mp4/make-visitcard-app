@@ -50,6 +50,14 @@ describe('public share preview routes', () => {
     expect(response.text).toContain('<script src="/assets/app.js"></script>')
   })
 
+  it('serves the crawler-ready shell through the public card rewrite path', async () => {
+    const response = await request(app).get('/c/alexey').expect(200)
+
+    expect(response.type).toBe('text/html')
+    expect(response.text).toContain('property="og:image"')
+    expect(response.text).toContain('<div id="root"></div>')
+  })
+
   it('returns a 1200x630 PNG response for the published card', async () => {
     const response = await request(app).get('/api/public/cards/alexey/og.png?v=preview').expect(200)
     const body: unknown = response.body

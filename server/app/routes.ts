@@ -187,7 +187,7 @@ export function registerRoutes(router: Router) {
   )
 
   router.get(
-    '/api/public/page/:slug',
+    ['/api/public/page/:slug', '/c/:slug'],
     route(async (req, res) => {
       const slug = slugSchema.parse(req.params.slug)
       const card = await getPublicCard(slug)
