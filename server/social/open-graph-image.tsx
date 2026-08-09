@@ -1,4 +1,5 @@
 import { ImageResponse } from '@vercel/og'
+import React from 'react'
 
 import { accentPresets } from '../../shared/accent-presets.js'
 import type { CardView } from '../../shared/types.js'
@@ -6,6 +7,13 @@ import type { CardView } from '../../shared/types.js'
 const allowedAvatarTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maximumAvatarBytes = 2 * 1024 * 1024
 const maximumAvatarRedirects = 3
+const darkAccentColors = {
+  green: '#61b78d',
+  orange: '#e3834c',
+  blue: '#6e9ed9',
+  violet: '#9a7ac9',
+  red: '#d67373',
+} as const
 
 interface ThemeTokens {
   background: string
@@ -131,6 +139,7 @@ export async function renderOpenGraphImage(card: CardView): Promise<ImageRespons
   const avatar = await loadOpenGraphAvatar(card.profile.avatarUrl)
   const editorial = card.appearance.themeId === 'editorial'
   const dark = card.appearance.themeId === 'dark'
+  const accentColor = dark ? darkAccentColors[card.appearance.accentPreset] : accent.base
   const avatarRadius =
     card.appearance.avatarShape === 'circle'
       ? '999px'
@@ -173,7 +182,7 @@ export async function renderOpenGraphImage(card: CardView): Promise<ImageRespons
             width: editorial ? '16px' : '100%',
             height: editorial ? '100%' : '12px',
             display: 'flex',
-            background: accent.base,
+            background: accentColor,
           }}
         />
 
@@ -182,14 +191,14 @@ export async function renderOpenGraphImage(card: CardView): Promise<ImageRespons
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            color: dark ? accent.base : theme.muted,
+            color: dark ? accentColor : theme.muted,
             fontSize: 18,
             fontWeight: 700,
             letterSpacing: '0.12em',
           }}
         >
           <span>{theme.eyebrow}</span>
-          <span style={{ color: accent.base }}>/{card.publication.slug}</span>
+          <span style={{ color: accentColor }}>/{card.publication.slug}</span>
         </div>
 
         <div
@@ -224,7 +233,7 @@ export async function renderOpenGraphImage(card: CardView): Promise<ImageRespons
               style={{
                 display: 'flex',
                 maxWidth: '700px',
-                color: accent.base,
+                color: accentColor,
                 fontSize: 30,
                 lineHeight: 1.24,
                 fontWeight: 620,
@@ -257,9 +266,9 @@ export async function renderOpenGraphImage(card: CardView): Promise<ImageRespons
               justifyContent: 'center',
               overflow: 'hidden',
               borderRadius: avatarRadius,
-              border: `3px solid ${accent.base}`,
+              border: `3px solid ${accentColor}`,
               background: dark ? '#293129' : accent.soft,
-              color: accent.base,
+              color: accentColor,
               fontSize: 54,
               fontWeight: 650,
             }}
