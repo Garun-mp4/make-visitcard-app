@@ -20,7 +20,36 @@ export function loadOwnerDashboard(): Promise<OwnerDashboard> {
 
 export async function loadOwnerStats(period: StatsPeriod): Promise<PeriodStats> {
   const result = await apiRequest<{ stats: PeriodStats }>(`/api/owner/stats?period=${period}`)
-  return result.stats
+  const stats = result.stats
+  return {
+    ...stats,
+    funnel: stats.funnel ?? {
+      views: stats.totals.views,
+      interest: Math.min(stats.totals.views, stats.totals.projectOpens + stats.totals.linkClicks),
+      contacts: Math.min(stats.totals.views, stats.totals.primaryClicks),
+      leads: Math.min(stats.totals.views, stats.totals.leads),
+      sampleSufficient: stats.totals.views >= 10,
+    },
+    sources: stats.sources ?? [
+      {
+        id: null,
+        name: 'Direct',
+        token: null,
+        archived: false,
+        views: stats.totals.views,
+        leads: stats.totals.leads,
+        conversion:
+          stats.totals.views >= 10
+            ? Math.round((stats.totals.leads / stats.totals.views) * 100)
+            : null,
+      },
+    ],
+    interest: stats.interest ?? [
+      { label: 'projects', value: stats.totals.projectOpens },
+      { label: 'services', value: 0 },
+      { label: 'links', value: stats.totals.linkClicks },
+    ],
+  }
 }
 
 export function saveLeadStatus(id: string, status: LeadRecord['status']): Promise<{ ok: true }> {
