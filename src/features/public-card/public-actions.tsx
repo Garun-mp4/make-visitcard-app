@@ -45,6 +45,10 @@ export function PublicActions({
             card={card}
             publicUrl={publicUrl}
             className="inline-flex min-h-11 items-center"
+            onOpen={() => {
+              if (analyticsEnabled)
+                recordPublicEvent(card.publication.slug, 'contact_save', 'vcard')
+            }}
           >
             {text('Сохранить контакт', 'Save contact')}
           </ContactSaveButton>
@@ -63,6 +67,9 @@ export function PublicActions({
           card={card}
           publicUrl={publicUrl}
           className={`grid size-11 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
+          onOpen={() => {
+            if (analyticsEnabled) recordPublicEvent(card.publication.slug, 'contact_save', 'vcard')
+          }}
         >
           <UserRoundPlus size={18} aria-hidden="true" />
         </ContactSaveButton>

@@ -2,6 +2,7 @@ import type { AnalyticsEvent } from '@shared/types'
 import { clientEnv } from '@/config/client-env'
 import { apiRequest } from '@/services/api-client'
 import { telegram } from '@/lib/telegram'
+import { getPublicVisitContext } from '@/services/public-visit'
 
 export function recordPublicEvent(
   slug: string,
@@ -14,6 +15,7 @@ export function recordPublicEvent(
     body: JSON.stringify({
       type,
       source: telegram.available ? 'telegram' : 'web',
+      ...getPublicVisitContext(slug),
       ...(targetId ? { targetId } : {}),
     }),
     keepalive: true,
