@@ -1,10 +1,8 @@
-import { Bookmark, QrCode, Share2 } from 'lucide-react'
+import { QrCode, Share2, UserRoundPlus } from 'lucide-react'
 import { useState } from 'react'
 
 import type { CardView } from '@shared/types'
-import { copyText } from '@/lib/utils'
-import { downloadVCard } from '@/lib/vcard'
-import { useFeedback } from '@/components/feedback/feedback-provider'
+import { ContactSaveButton } from '@/components/contact/contact-save-button'
 import { QrCodeDialog } from '@/components/qr/qr-code-dialog'
 import { useLocaleText } from '@/i18n/use-locale-text'
 import { usePublicCardShare } from '@/features/public-card/use-public-card-share'
@@ -23,7 +21,6 @@ export function PublicActions({
   publicUrl?: string
   variant?: 'clean' | 'dark' | 'editorial'
 }) {
-  const feedback = useFeedback()
   const text = useLocaleText()
   const [qrOpen, setQrOpen] = useState(false)
   const share = usePublicCardShare({ card, publicUrl, analyticsEnabled, onShare })
@@ -39,24 +36,18 @@ export function PublicActions({
       }}
     />
   )
-  const save = () => {
-    try {
-      downloadVCard(card)
-      feedback.notify(text('Контакт скачан', 'Contact downloaded'), 'success')
-    } catch {
-      void copyText(publicUrl).then((copied) =>
-        copied
-          ? feedback.notify(text('Ссылка скопирована', 'Link copied'), 'success')
-          : feedback.revealLink(text('Ссылка на визитку', 'Business card link'), publicUrl),
-      )
-    }
-  }
 
   if (variant === 'editorial')
     return (
       <>
         <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.1em] text-[#6c5a48]">
-          <button onClick={save}>{text('Сохранить', 'Save')}</button>
+          <ContactSaveButton
+            card={card}
+            publicUrl={publicUrl}
+            className="inline-flex min-h-11 items-center"
+          >
+            {text('Сохранить контакт', 'Save contact')}
+          </ContactSaveButton>
           <span aria-hidden="true">·</span>
           <button onClick={() => void share()}>{text('Поделиться', 'Share')}</button>
         </div>
@@ -68,17 +59,17 @@ export function PublicActions({
   return (
     <>
       <div className="flex gap-2">
-        <button
-          aria-label={text('Сохранить визитку', 'Save business card')}
-          onClick={save}
-          className={`grid size-10 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
+        <ContactSaveButton
+          card={card}
+          publicUrl={publicUrl}
+          className={`grid size-11 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
         >
-          <Bookmark size={18} aria-hidden="true" />
-        </button>
+          <UserRoundPlus size={18} aria-hidden="true" />
+        </ContactSaveButton>
         <button
           aria-label={text('Поделиться', 'Share')}
           onClick={() => void share()}
-          className={`grid size-10 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
+          className={`grid size-11 place-items-center border ${round ? 'rounded-full border-[#3a3f37] text-[#d9ded5]' : 'rounded-[10px] border-[#e1e4de] bg-white text-[#444a42]'}`}
         >
           <Share2 size={18} aria-hidden="true" />
         </button>
@@ -86,7 +77,7 @@ export function PublicActions({
           <button
             aria-label={text('Показать QR-код', 'Show QR code')}
             onClick={() => setQrOpen(true)}
-            className="grid size-10 place-items-center rounded-[10px] border border-[#e1e4de] bg-white text-[#444a42]"
+            className="grid size-11 place-items-center rounded-[10px] border border-[#e1e4de] bg-white text-[#444a42]"
           >
             <QrCode size={18} aria-hidden="true" />
           </button>
