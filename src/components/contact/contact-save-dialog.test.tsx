@@ -45,7 +45,7 @@ describe('ContactSaveDialog', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('previews only public contact details and starts a confirmed download', async () => {
-    downloadVCard.mockResolvedValueOnce('downloading')
+    downloadVCard.mockResolvedValueOnce({ state: 'downloading', requestId: 'request-ok' })
     render(
       <ContactSaveDialog
         card={demoCard}
@@ -103,7 +103,9 @@ describe('ContactSaveDialog', () => {
   })
 
   it('keeps the dialog open on cancellation and provides retry after an error', async () => {
-    downloadVCard.mockResolvedValueOnce('cancelled').mockResolvedValueOnce('error')
+    downloadVCard
+      .mockResolvedValueOnce({ state: 'cancelled', requestId: 'request-cancelled' })
+      .mockResolvedValueOnce({ state: 'error', requestId: 'request-failed' })
     render(
       <ContactSaveDialog
         card={demoCard}
@@ -120,6 +122,7 @@ describe('ContactSaveDialog', () => {
 
     await userEvent.setup().click(add)
     expect(screen.getByRole('alert')).toHaveTextContent('Не удалось открыть контакт')
+    expect(screen.getByRole('alert')).toHaveTextContent('request-failed')
     expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument()
   })
 })

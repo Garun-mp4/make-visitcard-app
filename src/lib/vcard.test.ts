@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { contactFileName, contactVCardUrl, downloadVCard } from './vcard'
 
@@ -19,8 +19,21 @@ vi.mock('./telegram', () => ({
 }))
 
 describe('contact vCard actions', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(null, {
+          status: 200,
+          headers: { 'x-request-id': 'request-123' },
+        }),
+      ),
+    )
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     telegramState.available = false
   })
 
@@ -36,7 +49,7 @@ describe('contact vCard actions', () => {
 
     await expect(
       downloadVCard('https://cardly.test/api/public/cards/alexey/contact.vcf', 'alexey'),
-    ).resolves.toBe('downloading')
+    ).resolves.toEqual({ state: 'downloading', requestId: 'request-123' })
     expect(telegramDownloadFile).toHaveBeenCalledWith({
       url: 'https://cardly.test/api/public/cards/alexey/contact.vcf',
       fileName: 'cardly-alexey.vcf',
@@ -54,7 +67,7 @@ describe('contact vCard actions', () => {
 
     await expect(
       downloadVCard('https://cardly.test/api/public/cards/alexey/contact.vcf', 'alexey'),
-    ).resolves.toBe('opened')
+    ).resolves.toEqual({ state: 'opened', requestId: 'request-123' })
     expect(clicked).toEqual({
       href: 'https://cardly.test/api/public/cards/alexey/contact.vcf',
       download: 'cardly-alexey.vcf',
@@ -67,9 +80,19 @@ describe('contact vCard actions', () => {
 
     await expect(
       downloadVCard('https://cardly.test/api/public/cards/alexey/contact.vcf', 'alexey'),
-    ).resolves.toBe('opened')
+    ).resolves.toEqual({ state: 'opened', requestId: 'request-123' })
     expect(telegramOpenLink).toHaveBeenCalledWith(
       'https://cardly.test/api/public/cards/alexey/contact.vcf',
     )
+  })
+
+  it('returns the server request id when the endpoint rejects the download', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(null, { status: 404, headers: { 'x-request-id': 'request-failed' } }),
+    )
+
+    await expect(
+      downloadVCard('https://cardly.test/api/public/cards/missing/contact.vcf', 'missing'),
+    ).resolves.toEqual({ state: 'error', requestId: 'request-failed' })
   })
 })
