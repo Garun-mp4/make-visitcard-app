@@ -9,11 +9,13 @@ export function ContactSaveButton({
   publicUrl,
   className,
   children,
+  onOpen,
 }: {
   card: CardView
   publicUrl?: string
   className?: string
   children: ReactNode
+  onOpen?: () => void
 }) {
   const l = useLocaleText()
   const [open, setOpen] = useState(false)
@@ -27,7 +29,10 @@ export function ContactSaveButton({
         aria-label={label}
         title={label}
         className={className}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          onOpen?.()
+          setOpen(true)
+        }}
       >
         {children}
       </button>

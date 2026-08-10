@@ -30,6 +30,15 @@ describe('QR image actions', () => {
     )
   })
 
+  it('preserves a valid tracked source in the native QR endpoint', () => {
+    expect(qrPngUrl('https://cardly.test/c/ada?ref=abcdefghijklmnop', 'ada')).toBe(
+      'https://cardly.test/api/public/cards/ada/qr.png?ref=abcdefghijklmnop',
+    )
+    expect(qrPngUrl('https://cardly.test/c/ada?ref=%3Cscript%3E', 'ada')).toBe(
+      'https://cardly.test/api/public/cards/ada/qr.png',
+    )
+  })
+
   it('uses Telegram native download instead of a blocked data URL in Mini Apps', async () => {
     telegramDownloadFile.mockResolvedValueOnce('downloading')
 

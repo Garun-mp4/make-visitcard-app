@@ -12,6 +12,7 @@ import { clientEnv } from '@/config/client-env'
 import { apiRequest, ApiError } from '@/services/api-client'
 import { telegram } from '@/lib/telegram'
 import { useLocaleText } from '@/i18n/use-locale-text'
+import { getPublicVisitContext } from '@/services/public-visit'
 
 export function LeadForm({
   slug,
@@ -69,7 +70,7 @@ export function LeadForm({
       if (!clientEnv.demoMode)
         await apiRequest(`/api/public/cards/${slug}/leads`, {
           method: 'POST',
-          body: JSON.stringify(value),
+          body: JSON.stringify({ ...value, ...getPublicVisitContext(slug) }),
         })
       setSuccess(true)
       reset()

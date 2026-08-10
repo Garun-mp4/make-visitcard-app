@@ -235,6 +235,37 @@ test('statistics exposes leads as a visible section and keeps the period', async
     'aria-pressed',
     'true',
   )
+  await expect(page.getByRole('heading', { name: 'Маршрут визитки' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Источники переходов' })).toBeVisible()
+  await page.screenshot({
+    path: `artifacts/visual-qa/stats-journey-${testInfo.project.name}.png`,
+    fullPage: true,
+  })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    await page.evaluate(() => document.documentElement.clientWidth),
+  )
+})
+
+test('publication creates a tracked link and QR in one flow', async ({ page }, testInfo) => {
+  await page.goto('/app/editor/publish')
+  await expect(page.getByRole('heading', { name: 'Ссылки для распространения' })).toBeVisible()
+
+  await page.getByLabel('Название источника').fill('Летняя конференция')
+  await page.getByRole('button', { name: 'Создать ссылку' }).click()
+
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Летняя конференция')
+  await expect(dialog.getByRole('img')).toBeVisible()
+  await expect(dialog).toContainText(/\?ref=[A-Za-z0-9_-]{16,64}/)
+  await expect(dialog.getByRole('button', { name: 'Скачать QR' })).toBeEnabled()
+  await expect(dialog.getByRole('button', { name: 'Поделиться QR' })).toBeEnabled()
+  await page.screenshot({
+    path: `artifacts/visual-qa/share-source-${testInfo.project.name}.png`,
+    fullPage: true,
+  })
+
+  await dialog.getByRole('button', { name: 'Закрыть' }).click()
+  await expect(page.getByText('Летняя конференция')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     await page.evaluate(() => document.documentElement.clientWidth),
   )

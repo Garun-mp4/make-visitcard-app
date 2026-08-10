@@ -12,6 +12,9 @@ import type {
   serviceSchema,
   skillSchema,
   telegramUserSchema,
+  shareSourceCreateSchema,
+  shareSourcePatchSchema,
+  publicLeadSubmissionSchema,
 } from './schemas.js'
 
 export type CardDraft = z.infer<typeof cardDraftSchema>
@@ -36,6 +39,9 @@ export type Service = z.infer<typeof serviceSchema>
 export type Project = z.infer<typeof projectSchema>
 export type LeadInput = z.infer<typeof leadSchema>
 export type AnalyticsEvent = z.infer<typeof analyticsEventSchema>
+export type PublicLeadSubmission = z.infer<typeof publicLeadSubmissionSchema>
+export type ShareSourceCreate = z.infer<typeof shareSourceCreateSchema>
+export type ShareSourcePatch = z.infer<typeof shareSourcePatchSchema>
 export type TelegramUser = z.infer<typeof telegramUserSchema>
 
 export interface OwnerProfile {
@@ -109,4 +115,34 @@ export interface PeriodStats {
   series: Array<{ label: string; views: number }>
   averageViews: number
   popularActions: Array<{ label: 'primary' | 'links' | 'projects' | 'share'; value: number }>
+  funnel: FunnelStats
+  sources: ShareSourceStats[]
+  interest: Array<{ label: 'projects' | 'services' | 'links'; value: number }>
+}
+
+export interface ShareSource {
+  id: string
+  name: string
+  token: string
+  archived: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ShareSourceStats {
+  id: string | null
+  name: string
+  token: string | null
+  archived: boolean
+  views: number
+  leads: number
+  conversion: number | null
+}
+
+export interface FunnelStats {
+  views: number
+  interest: number
+  contacts: number
+  leads: number
+  sampleSufficient: boolean
 }

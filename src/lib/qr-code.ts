@@ -26,8 +26,9 @@ export function qrPngFileName(slug: string): string {
 }
 
 export function qrPngUrl(publicUrl: string, slug: string): string {
-  const origin = new URL(publicUrl, window.location.origin).origin
-  return `${origin}/api/public/cards/${encodeURIComponent(slug)}/qr.png`
+  const parsed = new URL(publicUrl, window.location.origin)
+  const ref = parsed.searchParams.get('ref')
+  return `${parsed.origin}/api/public/cards/${encodeURIComponent(slug)}/qr.png${ref && /^[A-Za-z0-9_-]{16,64}$/.test(ref) ? `?ref=${encodeURIComponent(ref)}` : ''}`
 }
 
 export async function createQrPngAsset(

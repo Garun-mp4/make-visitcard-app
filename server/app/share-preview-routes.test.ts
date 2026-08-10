@@ -93,6 +93,17 @@ describe('public share preview routes', () => {
     expect(mocks.renderQrPng).toHaveBeenCalledWith('https://cardly.example/c/alexey')
   })
 
+  it('renders a tracked source into a downloadable QR without exposing visitor data', async () => {
+    await request(app)
+      .get('/api/public/cards/alexey/qr.png?ref=abcdefghijklmnop')
+      .set('Host', 'cardly.example')
+      .set('X-Forwarded-Proto', 'https')
+      .expect(200)
+    expect(mocks.renderQrPng).toHaveBeenLastCalledWith(
+      'https://cardly.example/c/alexey?ref=abcdefghijklmnop',
+    )
+  })
+
   it('serves an importable vCard from the published snapshot', async () => {
     const response = await request(app)
       .get('/api/public/cards/alexey/contact.vcf')

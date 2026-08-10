@@ -264,18 +264,56 @@ export const ownerPreferencesPatchSchema = ownerPreferencesSchema
   .partial()
   .refine((value) => Object.keys(value).length > 0, 'Укажите хотя бы одну настройку')
 
-export const analyticsEventSchema = z.object({
-  type: z.enum([
-    'card_view',
-    'primary_cta_click',
-    'link_click',
-    'project_open',
-    'lead_submit',
-    'share',
-  ]),
-  source: z.enum(['web', 'telegram', 'share', 'unknown']).default('unknown'),
-  targetId: z.string().trim().max(80).optional(),
+export const shareSourceTokenSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{16,64}$/)
+
+export const shareSourceCreateSchema = z.object({
+  name: z.string().trim().min(2).max(60),
 })
+
+export const shareSourcePatchSchema = z
+  .object({
+    name: z.string().trim().min(2).max(60).optional(),
+    archived: z.boolean().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, 'Укажите хотя бы одно изменение')
+
+const analyticsContextFields = {
+  sourceToken: shareSourceTokenSchema.optional(),
+  visitId: z.string().uuid().optional(),
+  eventId: z.string().uuid().optional(),
+}
+
+const hasCompleteAnalyticsContext = (value: { visitId?: string; eventId?: string }) =>
+  Boolean(value.visitId) === Boolean(value.eventId)
+
+export const analyticsContextSchema = z
+  .object(analyticsContextFields)
+  .refine(hasCompleteAnalyticsContext, 'visitId и eventId должны передаваться вместе')
+
+export const analyticsEventSchema = z
+  .object({
+    type: z.enum([
+      'card_view',
+      'primary_cta_click',
+      'link_click',
+      'project_open',
+      'service_open',
+      'contact_save',
+      'lead_submit',
+      'share',
+    ]),
+    source: z.enum(['web', 'telegram', 'share', 'unknown']).default('unknown'),
+    targetId: z.string().trim().max(80).optional(),
+    ...analyticsContextFields,
+  })
+  .refine(hasCompleteAnalyticsContext, 'visitId и eventId должны передаваться вместе')
+
+export const publicLeadSubmissionSchema = leadSchema
+  .extend(analyticsContextFields)
+  .refine(hasCompleteAnalyticsContext, 'visitId и eventId должны передаваться вместе')
 
 export const telegramUserSchema = z.object({
   id: z.number().int().positive().safe(),
