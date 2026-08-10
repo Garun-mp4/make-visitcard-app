@@ -337,6 +337,57 @@ export async function createLead(slug: string, input: PublicLeadSubmission) {
         await sql`SELECT id FROM cardly_share_sources WHERE owner_uid = ${owner.owner_uid} AND token = ${input.sourceToken} LIMIT 1`,
       )[0]
     : undefined
+  if (input.visitId && input.eventId) {
+    const attributed = rowsOf<{ id: string; inserted: boolean }>(
+      await sql`
+        WITH inserted_event AS (
+          INSERT INTO cardly_analytics_events (
+            event_id, owner_uid, card_slug, event_type, target_id, source_id, visit_id_hash
+          ) VALUES (
+            ${input.eventId}, ${owner.owner_uid}, ${slug}, 'lead_submit', 'lead-form',
+            ${source?.id ?? null}, ${analyticsVisitHash(slug, input.visitId)}
+          )
+          ON CONFLICT (event_id) DO NOTHING
+          RETURNING event_id
+        ), inserted_lead AS (
+          INSERT INTO cardly_leads (
+            id, owner_uid, card_slug, sender_name, sender_contact, message, source, source_id,
+            analytics_event_id
+          )
+          SELECT ${id}, ${owner.owner_uid}, ${slug}, ${input.senderName}, ${input.senderContact},
+            ${input.message}, ${input.source}, ${source?.id ?? null}, ${input.eventId}
+          FROM inserted_event
+          ON CONFLICT (analytics_event_id) DO NOTHING
+          RETURNING id
+        ), updated_stats AS (
+          INSERT INTO cardly_stats (owner_uid, total_leads, updated_at)
+          SELECT ${owner.owner_uid}, 1, NOW() FROM inserted_event
+          ON CONFLICT (owner_uid) DO UPDATE SET
+            total_leads = cardly_stats.total_leads + 1,
+            updated_at = NOW()
+          RETURNING owner_uid
+        ), updated_daily AS (
+          INSERT INTO cardly_daily_stats (owner_uid, day, leads)
+          SELECT ${owner.owner_uid}, CURRENT_DATE, 1 FROM inserted_event
+          ON CONFLICT (owner_uid, day) DO UPDATE SET
+            leads = cardly_daily_stats.leads + 1,
+            updated_at = NOW()
+          RETURNING owner_uid
+        )
+        SELECT id, TRUE AS inserted FROM inserted_lead
+        UNION ALL
+        SELECT id, FALSE AS inserted FROM cardly_leads
+        WHERE analytics_event_id = ${input.eventId}
+        LIMIT 1
+      `,
+    )[0]
+    return {
+      id: attributed?.id ?? id,
+      ownerUid: owner.owner_uid,
+      telegramId: owner.telegram_id,
+      notifyOwner: Boolean(attributed?.inserted) && owner.lead_notifications_enabled,
+    }
+  }
   await sql.transaction([
     sql`
       INSERT INTO cardly_leads (
@@ -361,12 +412,6 @@ export async function createLead(slug: string, input: PublicLeadSubmission) {
         updated_at = NOW()
     `,
   ])
-  if (input.visitId && input.eventId)
-    await insertRawAnalyticsEvent(sql, owner.owner_uid, slug, {
-      ...input,
-      type: 'lead_submit',
-      targetId: 'lead-form',
-    })
   return {
     id,
     ownerUid: owner.owner_uid,

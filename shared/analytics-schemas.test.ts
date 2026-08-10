@@ -16,6 +16,12 @@ describe('Milestone 2 analytics contracts', () => {
     expect(() =>
       analyticsEventSchema.parse({ type: 'card_view', sourceToken: '<script>alert(1)</script>' }),
     ).toThrow()
+    expect(() =>
+      analyticsEventSchema.parse({
+        type: 'card_view',
+        eventId: '22222222-2222-4222-8222-222222222222',
+      }),
+    ).toThrow()
   })
 
   it('normalizes source names and enforces the UI limit', () => {

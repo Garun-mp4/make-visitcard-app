@@ -280,11 +280,18 @@ export const shareSourcePatchSchema = z
   })
   .refine((value) => Object.keys(value).length > 0, 'Укажите хотя бы одно изменение')
 
-export const analyticsContextSchema = z.object({
+const analyticsContextFields = {
   sourceToken: shareSourceTokenSchema.optional(),
   visitId: z.string().uuid().optional(),
   eventId: z.string().uuid().optional(),
-})
+}
+
+const hasCompleteAnalyticsContext = (value: { visitId?: string; eventId?: string }) =>
+  Boolean(value.visitId) === Boolean(value.eventId)
+
+export const analyticsContextSchema = z
+  .object(analyticsContextFields)
+  .refine(hasCompleteAnalyticsContext, 'visitId и eventId должны передаваться вместе')
 
 export const analyticsEventSchema = z
   .object({
@@ -300,10 +307,13 @@ export const analyticsEventSchema = z
     ]),
     source: z.enum(['web', 'telegram', 'share', 'unknown']).default('unknown'),
     targetId: z.string().trim().max(80).optional(),
+    ...analyticsContextFields,
   })
-  .extend(analyticsContextSchema.shape)
+  .refine(hasCompleteAnalyticsContext, 'visitId и eventId должны передаваться вместе')
 
-export const publicLeadSubmissionSchema = leadSchema.extend(analyticsContextSchema.shape)
+export const publicLeadSubmissionSchema = leadSchema
+  .extend(analyticsContextFields)
+  .refine(hasCompleteAnalyticsContext, 'visitId и eventId должны передаваться вместе')
 
 export const telegramUserSchema = z.object({
   id: z.number().int().positive().safe(),

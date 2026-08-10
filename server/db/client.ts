@@ -45,6 +45,7 @@ export async function ensureDatabaseSchema(): Promise<void> {
         sender_contact TEXT NOT NULL,
         message TEXT NOT NULL,
         source TEXT NOT NULL,
+        analytics_event_id UUID UNIQUE,
         status TEXT NOT NULL DEFAULT 'new',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`,
@@ -102,6 +103,9 @@ export async function ensureDatabaseSchema(): Promise<void> {
       sql`ALTER TABLE cardly_users ADD COLUMN IF NOT EXISTS preferred_locale TEXT`,
       sql`ALTER TABLE cardly_users ADD COLUMN IF NOT EXISTS lead_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE`,
       sql`ALTER TABLE cardly_leads ADD COLUMN IF NOT EXISTS source_id UUID REFERENCES cardly_share_sources(id) ON DELETE SET NULL`,
+      sql`ALTER TABLE cardly_leads ADD COLUMN IF NOT EXISTS analytics_event_id UUID`,
+      sql`CREATE UNIQUE INDEX IF NOT EXISTS cardly_leads_analytics_event_idx
+        ON cardly_leads(analytics_event_id) WHERE analytics_event_id IS NOT NULL`,
       sql`CREATE INDEX IF NOT EXISTS cardly_share_sources_owner_idx
         ON cardly_share_sources(owner_uid, archived, created_at DESC)`,
       sql`CREATE INDEX IF NOT EXISTS cardly_analytics_owner_time_idx
