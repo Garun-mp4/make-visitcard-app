@@ -11,6 +11,7 @@ import {
   slugSchema,
   shareSourceCreateSchema,
   shareSourcePatchSchema,
+  shareSourceTokenSchema,
 } from '../../shared/schemas.js'
 import { requireSession } from '../auth/session.js'
 import { requireSessionAuth } from '../auth/session-middleware.js'
@@ -259,7 +260,9 @@ export function registerRoutes(router: Router) {
       const card = await getPublicCard(slug)
       if (!card) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
       const fileName = `cardly-${slug}-qr.png`
-      const image = await renderQrPng(`${appOrigin(req)}/c/${slug}`)
+      const ref = shareSourceTokenSchema.safeParse(req.query.ref)
+      const publicUrl = `${appOrigin(req)}/c/${slug}${ref.success ? `?ref=${encodeURIComponent(ref.data)}` : ''}`
+      const image = await renderQrPng(publicUrl)
       res.setHeader('Content-Type', 'image/png')
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
       res.setHeader('Access-Control-Allow-Origin', 'https://web.telegram.org')

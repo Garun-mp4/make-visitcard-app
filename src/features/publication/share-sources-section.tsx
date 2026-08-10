@@ -18,7 +18,7 @@ import { useFeedback } from '@/components/feedback/feedback-provider'
 import { useQrPng } from '@/components/qr/use-qr-png'
 import { Button } from '@/components/ui/button'
 import { useLocaleText } from '@/i18n/use-locale-text'
-import { downloadQrPng, shareQrPng } from '@/lib/qr-code'
+import { downloadQrPng, qrPngUrl, shareQrPng } from '@/lib/qr-code'
 import { copyText } from '@/lib/utils'
 import {
   createShareSource,
@@ -258,7 +258,7 @@ export function ShareSourcesSection({ slug }: { slug: string }) {
           <section
             role="dialog"
             aria-modal="true"
-            className="surface grid w-full max-w-md gap-4 rounded-2xl p-5"
+            className="surface grid max-h-[calc(100dvh-var(--tg-safe-top)-24px)] w-full max-w-md gap-4 overflow-y-auto rounded-2xl p-5"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
@@ -304,7 +304,7 @@ export function ShareSourcesSection({ slug }: { slug: string }) {
                 onClick={() =>
                   void (async () => {
                     if (!sourceQr.asset) return
-                    await downloadQrPng(sourceQr.asset)
+                    await downloadQrPng(sourceQr.asset, qrPngUrl(selectedUrl, slug))
                     feedback.notify(l('QR-код скачан', 'QR code downloaded'), 'success')
                   })()
                 }

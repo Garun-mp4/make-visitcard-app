@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import type { CardView, Project } from '@shared/types'
 import { CleanTheme } from '@/features/public-card/clean-theme'
@@ -18,6 +18,7 @@ export function PublicCardRenderer({
   publicUrl?: string
 }) {
   const [project, setProject] = useState<Project | null>(null)
+  const servicesRecorded = useRef(false)
   const closeProject = useCallback(() => setProject(null), [])
   const common = {
     card,
@@ -30,6 +31,22 @@ export function PublicCardRenderer({
     onLead: () =>
       document.getElementById('public-lead-form')?.scrollIntoView({ behavior: 'smooth' }),
   }
+  useEffect(() => {
+    if (!analyticsEnabled || servicesRecorded.current || !('IntersectionObserver' in window)) return
+    const section = document.querySelector('[data-pen-region="services"]')
+    if (!section) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.6)) return
+        servicesRecorded.current = true
+        recordPublicEvent(card.publication.slug, 'service_open', 'services')
+        observer.disconnect()
+      },
+      { threshold: 0.6 },
+    )
+    observer.observe(section)
+    return () => observer.disconnect()
+  }, [analyticsEnabled, card.publication.slug])
   return (
     <div
       className="contents"
