@@ -21,6 +21,7 @@ import { useQrPng } from '@/components/qr/use-qr-png'
 import { Button } from '@/components/ui/button'
 import { clientEnv } from '@/config/client-env'
 import { EditorShell } from '@/features/editor/editor-shell'
+import { ShareSourcesSection } from '@/features/publication/share-sources-section'
 import { useLocaleText } from '@/i18n/use-locale-text'
 import { downloadQrPng, qrPngUrl, shareQrPng } from '@/lib/qr-code'
 import { copyText } from '@/lib/utils'
@@ -653,6 +654,8 @@ export default function PublicationPage() {
           <PublicationQr url={publicUrl} slug={slug} ownerName={card.profile.displayName} compact />
         </div>
       ) : null}
+
+      {published ? <ShareSourcesSection slug={slug} /> : null}
 
       {published ? (
         <SharePreviewCard

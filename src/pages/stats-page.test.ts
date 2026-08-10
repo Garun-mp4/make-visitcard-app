@@ -23,6 +23,23 @@ const emptyStats: PeriodStats = {
     { label: 'projects', value: 0 },
     { label: 'share', value: 0 },
   ],
+  funnel: { views: 0, interest: 0, contacts: 0, leads: 0, sampleSufficient: false },
+  sources: [
+    {
+      id: null,
+      name: 'Direct',
+      token: null,
+      archived: false,
+      views: 0,
+      leads: 0,
+      conversion: null,
+    },
+  ],
+  interest: [
+    { label: 'projects', value: 0 },
+    { label: 'services', value: 0 },
+    { label: 'links', value: 0 },
+  ],
 }
 
 describe('statistics empty states', () => {

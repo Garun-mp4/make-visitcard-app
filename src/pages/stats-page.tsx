@@ -23,6 +23,104 @@ export function hasPopularActions(data: PeriodStats): boolean {
   return data.popularActions.some((item) => item.value > 0)
 }
 
+function FunnelRoute({ data }: { data: PeriodStats }) {
+  const l = useLocaleText()
+  const stages = [
+    [l('Просмотры', 'Views'), data.funnel.views],
+    [l('Интерес', 'Interest'), data.funnel.interest],
+    [l('Контакты', 'Contacts'), data.funnel.contacts],
+    [l('Заявки', 'Leads'), data.funnel.leads],
+  ] as const
+  return (
+    <section className="surface mt-4 rounded-2xl p-4 lg:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h2 className="heading-font m-0 text-lg">{l('Маршрут визитки', 'Card journey')}</h2>
+          <p className="mb-0 mt-1 text-xs text-[var(--text-muted)]">
+            {l('От первого просмотра до заявки', 'From first view to lead')}
+          </p>
+        </div>
+        {!data.funnel.sampleSufficient && data.funnel.views > 0 ? (
+          <span className="rounded-full bg-[var(--warning-soft)] px-2.5 py-1 text-[10px] font-semibold text-[var(--warning)]">
+            {l('Мало данных', 'Small sample')}
+          </span>
+        ) : null}
+      </div>
+      {data.funnel.views === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-[var(--border)] p-6 text-center text-sm text-[var(--text-muted)]">
+          {l(
+            'Маршрут появится после первых посещений.',
+            'The journey appears after the first visits.',
+          )}
+        </div>
+      ) : (
+        <div
+          className="mt-5 grid grid-cols-4 gap-1"
+          aria-label={l('Воронка визитки', 'Card funnel')}
+        >
+          {stages.map(([label, value], index) => (
+            <div key={label} className="relative min-w-0 text-center">
+              {index < stages.length - 1 ? (
+                <span
+                  className="absolute left-[60%] top-4 h-px w-[80%] bg-[var(--border-strong)]"
+                  aria-hidden="true"
+                />
+              ) : null}
+              <span
+                className={`relative mx-auto grid size-9 place-items-center rounded-full border text-xs font-bold ${value > 0 ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface-secondary)] text-[var(--text-muted)]'}`}
+              >
+                {index + 1}
+              </span>
+              <strong className="heading-font mt-2 block text-xl tabular-nums">{value}</strong>
+              <span className="block truncate text-[9px] text-[var(--text-muted)]">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {!data.funnel.sampleSufficient && data.funnel.views > 0 ? (
+        <p className="mb-0 mt-4 text-xs leading-relaxed text-[var(--warning)]">
+          {l(
+            'Недостаточно данных для устойчивого вывода — показываем абсолютные значения.',
+            'Not enough data for a stable conclusion — showing absolute values.',
+          )}
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+function SourceRanking({ data }: { data: PeriodStats }) {
+  const l = useLocaleText()
+  const visible = data.sources.filter((source) => !source.archived || source.views > 0)
+  return (
+    <section className="surface mt-4 rounded-2xl p-4 lg:p-5">
+      <h2 className="heading-font m-0 text-lg">{l('Источники переходов', 'Traffic sources')}</h2>
+      <p className="mb-0 mt-1 text-xs text-[var(--text-muted)]">
+        {l('Какие ссылки приводят посетителей', 'Which links bring visitors')}
+      </p>
+      <div className="mt-3 divide-y divide-[var(--border)]">
+        {visible.map((source) => (
+          <div
+            key={source.id ?? 'direct'}
+            className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 text-sm"
+          >
+            <span className="truncate font-semibold">
+              {source.name === 'Direct' ? l('Прямые переходы', 'Direct') : source.name}
+            </span>
+            <span className="text-right tabular-nums">
+              <strong>{source.views}</strong>
+              <small className="ml-1 text-[var(--text-muted)]">{l('просм.', 'views')}</small>
+            </span>
+            <span className="w-14 text-right text-xs tabular-nums text-[var(--text-muted)]">
+              {source.conversion === null ? '—' : `${source.conversion}%`}
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function StatsPage() {
   const { leads, refreshDashboard, setLeadStatus, stats: dashboardStats } = useCardStore()
   const { t, i18n } = useTranslation()
@@ -78,6 +176,29 @@ export default function StatsPage() {
         { label: 'links', value: totals.linkClicks },
         { label: 'projects', value: totals.projectOpens },
         { label: 'share', value: totals.shares },
+      ],
+      funnel: {
+        views: totals.views,
+        interest: Math.min(totals.views, totals.projectOpens + totals.linkClicks),
+        contacts: Math.min(totals.views, totals.primaryClicks),
+        leads: Math.min(totals.views, totals.leads),
+        sampleSufficient: totals.views >= 10,
+      },
+      sources: [
+        {
+          id: null,
+          name: 'Direct',
+          token: null,
+          archived: false,
+          views: totals.views,
+          leads: totals.leads,
+          conversion: totals.views >= 10 ? Math.round((totals.leads / totals.views) * 100) : null,
+        },
+      ],
+      interest: [
+        { label: 'projects', value: totals.projectOpens },
+        { label: 'services', value: 0 },
+        { label: 'links', value: totals.linkClicks },
       ],
     })
     setLoading(false)
@@ -195,6 +316,8 @@ export default function StatsPage() {
             </div>
           ) : (
             <>
+              <FunnelRoute data={data} />
+              <SourceRanking data={data} />
               <div className="mt-3 grid grid-cols-3 gap-2 lg:grid-cols-5 lg:gap-3">
                 {[
                   [l('Просмотры', 'Views'), data.totals.views, data.deltas.views, true],
