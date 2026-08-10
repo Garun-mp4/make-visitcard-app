@@ -1,9 +1,10 @@
-import { ArrowRight, Circle } from 'lucide-react'
+import { ArrowRight, Circle, UserRoundPlus } from 'lucide-react'
 import type { CSSProperties } from 'react'
 
 import type { CardView, Project } from '@shared/types'
 import { Avatar } from '@/components/ui/avatar'
 import { LeadForm } from '@/features/public-card/lead-form'
+import { ContactSaveButton } from '@/components/contact/contact-save-button'
 import { PublicActions } from '@/features/public-card/public-actions'
 import { PublicLinks } from '@/features/public-card/public-links'
 import {
@@ -74,12 +75,21 @@ export function CleanTheme({
         >
           {l('Поделиться ↗', 'Share ↗')}
         </button>
-        <button
-          onClick={onLead}
-          className="hidden min-h-11 rounded-[10px] bg-[var(--accent)] px-[18px] text-[13px] font-semibold text-[var(--accent-contrast)] lg:block"
-        >
-          {l('Написать', 'Contact')}
-        </button>
+        <div className="hidden items-center gap-2 lg:flex">
+          <ContactSaveButton
+            card={card}
+            publicUrl={publicUrl}
+            className="grid size-11 place-items-center rounded-[10px] border border-[#e1e4de] bg-white text-[#444a42]"
+          >
+            <UserRoundPlus size={18} aria-hidden="true" />
+          </ContactSaveButton>
+          <button
+            onClick={onLead}
+            className="min-h-11 rounded-[10px] bg-[var(--accent)] px-[18px] text-[13px] font-semibold text-[var(--accent-contrast)]"
+          >
+            {l('Написать', 'Contact')}
+          </button>
+        </div>
       </header>
 
       <main>

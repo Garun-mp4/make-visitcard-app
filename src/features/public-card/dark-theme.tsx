@@ -5,6 +5,7 @@ import type { CardView, Project } from '@shared/types'
 import { Avatar } from '@/components/ui/avatar'
 import { LeadForm } from '@/features/public-card/lead-form'
 import { PublicActions } from '@/features/public-card/public-actions'
+import { ContactSaveButton } from '@/components/contact/contact-save-button'
 import { PublicLinks } from '@/features/public-card/public-links'
 import { darkProjectColors, orderedPublicData } from '@/features/public-card/theme-data'
 import { ProjectCover, ServicePrice } from '@/features/public-card/theme-shared'
@@ -74,6 +75,13 @@ export function DarkTheme({
           <a href="#dark-work">Work</a>
           <a href="#dark-services">Services</a>
           <button onClick={onLead}>Contact</button>
+          <ContactSaveButton
+            card={card}
+            publicUrl={publicUrl}
+            className="min-h-11 text-[var(--accent)]"
+          >
+            {l('Сохранить контакт', 'Save contact')}
+          </ContactSaveButton>
           <button onClick={() => void share()}>Share ↗</button>
         </nav>
       </header>

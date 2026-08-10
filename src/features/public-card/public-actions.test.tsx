@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -43,4 +43,25 @@ describe('PublicActions native sharing', () => {
     expect(screen.getByTitle('QR-код визитки')).toBeInTheDocument()
     expect(revealLink).not.toHaveBeenCalled()
   })
+
+  it.each(['clean', 'dark', 'editorial'] as const)(
+    'opens a clear contact preview from the %s theme and restores focus',
+    async (variant) => {
+      render(
+        <PublicActions
+          card={demoCard}
+          publicUrl="https://cardly.test/c/alexey"
+          variant={variant}
+        />,
+      )
+      const trigger = screen.getByRole('button', { name: 'Сохранить контакт' })
+      expect(trigger).toHaveAttribute('title', 'Сохранить контакт')
+
+      await userEvent.setup().click(trigger)
+
+      expect(screen.getByRole('dialog', { name: 'Сохранить контакт' })).toBeInTheDocument()
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Закрыть' }))
+      await waitFor(() => expect(trigger).toHaveFocus())
+    },
+  )
 })

@@ -22,6 +22,7 @@ const knownPaths = [
   '/api/public/cards/:slug',
   '/api/public/cards/:slug/og.png',
   '/api/public/cards/:slug/qr.png',
+  '/api/public/cards/:slug/contact.vcf',
   '/api/public/cards/:slug/leads',
   '/api/public/cards/:slug/events',
   '/api/public/page/:slug',

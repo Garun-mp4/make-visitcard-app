@@ -450,3 +450,66 @@ test('QR actions use Telegram native fallbacks when its WebView blocks browser a
     .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-telegram-share')))
     .not.toBeNull()
 })
+
+test('contact save previews data and downloads a real vCard in browsers', async ({ page }) => {
+  await page.goto('/c/alexey')
+  await page.getByRole('button', { name: 'Сохранить контакт' }).click()
+
+  const dialog = page.getByRole('dialog', { name: 'Сохранить контакт' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('Алексей Волков')
+  await expect(dialog).toContainText('alexey@example.com')
+
+  const downloadPromise = page.waitForEvent('download')
+  await dialog.getByRole('button', { name: 'Добавить в контакты' }).click()
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toBe('cardly-alexey.vcf')
+  const path = await download.path()
+  expect(path).not.toBeNull()
+  if (!path) throw new Error('Downloaded contact path is unavailable')
+  expect((await readFile(path, 'utf8')).replace(/^\uFEFF/, '').startsWith('BEGIN:VCARD')).toBe(true)
+})
+
+test('contact save uses Telegram native download and never overflows mobile widths', async ({
+  page,
+}) => {
+  for (const width of [320, 390, 420]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/c/alexey')
+    await page.evaluate(() => {
+      const telegramWindow = window as Window & {
+        Telegram?: {
+          WebApp?: {
+            downloadFile?(
+              params: { url: string; file_name: string },
+              callback?: (accepted: boolean) => void,
+            ): void
+          }
+        }
+      }
+      telegramWindow.Telegram = {
+        WebApp: {
+          downloadFile: (params, callback) => {
+            sessionStorage.setItem('cardly-contact-download', JSON.stringify(params))
+            callback?.(true)
+          },
+        },
+      }
+    })
+    await page.getByRole('button', { name: 'Сохранить контакт' }).click()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+      await page.evaluate(() => document.documentElement.clientWidth),
+    )
+    await page.getByRole('button', { name: 'Добавить в контакты' }).click()
+    await expect
+      .poll(() => page.evaluate(() => sessionStorage.getItem('cardly-contact-download')))
+      .not.toBeNull()
+    const request: unknown = JSON.parse(
+      (await page.evaluate(() => sessionStorage.getItem('cardly-contact-download'))) ?? '{}',
+    )
+    expect(request).toEqual({
+      url: expect.stringMatching(/\/api\/public\/cards\/alexey\/contact\.vcf$/),
+      file_name: 'cardly-alexey.vcf',
+    })
+  }
+})

@@ -93,10 +93,26 @@ describe('public share preview routes', () => {
     expect(mocks.renderQrPng).toHaveBeenCalledWith('https://cardly.example/c/alexey')
   })
 
+  it('serves an importable vCard from the published snapshot', async () => {
+    const response = await request(app)
+      .get('/api/public/cards/alexey/contact.vcf')
+      .set('Host', 'cardly.example')
+      .set('X-Forwarded-Proto', 'https')
+      .expect(200)
+
+    expect(response.headers['content-type']).toContain('text/vcard')
+    expect(response.headers['content-disposition']).toBe('attachment; filename="cardly-alexey.vcf"')
+    expect(response.headers['access-control-allow-origin']).toBe('https://web.telegram.org')
+    expect(response.text).toContain('BEGIN:VCARD\r\nVERSION:3.0\r\n')
+    expect(response.text).toContain('FN:Алексей Волков\r\n')
+    expect(response.text).toContain('item1.URL:https://cardly.example/c/alexey\r\n')
+  })
+
   it.each([
     '/api/public/page/missing',
     '/api/public/cards/missing/og.png',
     '/api/public/cards/missing/qr.png',
+    '/api/public/cards/missing/contact.vcf',
   ])('does not expose an unpublished card through %s', async (path) => {
     mocks.getPublicCard.mockResolvedValueOnce(null)
     const response = await request(app).get(path).expect(404)
