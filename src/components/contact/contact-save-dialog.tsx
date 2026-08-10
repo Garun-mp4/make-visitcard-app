@@ -13,7 +13,7 @@ import {
   contactFileName,
   contactVCardUrl,
   downloadVCard,
-  type ContactDownloadResult,
+  type ContactDownloadOutcome,
 } from '@/lib/vcard'
 
 function ContactIcon({ type }: { type: CardLink['type'] }) {
@@ -45,7 +45,7 @@ export function ContactSaveDialog({
   const contactText = formatContactText(card, publicUrl, locale)
   const [downloading, setDownloading] = useState(false)
   const [manualCopy, setManualCopy] = useState(false)
-  const [failed, setFailed] = useState(false)
+  const [failedRequestId, setFailedRequestId] = useState<string | null>(null)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -68,14 +68,14 @@ export function ContactSaveDialog({
 
   const close = () => {
     setManualCopy(false)
-    setFailed(false)
+    setFailedRequestId(null)
     onClose()
     window.setTimeout(() => returnFocusRef.current?.focus(), 0)
   }
 
-  const handleResult = (result: ContactDownloadResult) => {
-    if (result === 'cancelled') return
-    if (result === 'downloading') {
+  const handleResult = (result: ContactDownloadOutcome) => {
+    if (result.state === 'cancelled') return
+    if (result.state === 'downloading') {
       feedback.notify(
         l(
           `Скачивание контакта началось. Откройте ${contactFileName(card.publication.slug)}`,
@@ -86,17 +86,17 @@ export function ContactSaveDialog({
       close()
       return
     }
-    if (result === 'opened') {
+    if (result.state === 'opened') {
       feedback.notify(l('Открываем контакт', 'Opening contact'), 'success')
       close()
       return
     }
-    setFailed(true)
+    setFailedRequestId(result.requestId)
   }
 
   const addContact = async () => {
     setDownloading(true)
-    setFailed(false)
+    setFailedRequestId(null)
     const endpoint = contactVCardUrl(publicUrl, card.publication.slug)
     const result = await downloadVCard(endpoint, card.publication.slug)
     setDownloading(false)
@@ -203,12 +203,17 @@ export function ContactSaveDialog({
           ))}
         </ol>
 
-        {failed ? (
+        {failedRequestId ? (
           <div
             role="alert"
             className="flex items-center justify-between gap-3 rounded-xl bg-[var(--warning-soft)] p-3 text-sm text-[var(--warning)]"
           >
-            <span>{l('Не удалось открыть контакт.', 'Could not open the contact.')}</span>
+            <span>
+              {l('Не удалось открыть контакт.', 'Could not open the contact.')}
+              <small className="mt-1 block font-mono opacity-80">
+                {l('ID запроса', 'Request ID')}: {failedRequestId}
+              </small>
+            </span>
             <button
               className="inline-flex min-h-11 items-center gap-1.5 font-semibold"
               onClick={() => void addContact()}
