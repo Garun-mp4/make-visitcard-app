@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHmac, randomBytes, randomUUID } from 'node:crypto'
 
 import { cardDraftSchema, publicCardSchema, publishableCardSchema } from '../../shared/schemas.js'
 import { createInitialCard, syncTelegramAvatar } from '../../shared/initial-card.js'
@@ -8,17 +8,22 @@ import type {
   CardSaveResult,
   CardStats,
   CardView,
-  LeadInput,
   LeadRecord,
   OwnerProfile,
   OwnerPreferences,
   PeriodStats,
+  PublicLeadSubmission,
+  ShareSource,
+  ShareSourceCreate,
+  ShareSourcePatch,
+  ShareSourceStats,
   StatsPeriod,
   TelegramUser,
 } from '../../shared/types.js'
 import { sanitizePublicSnapshot } from '../cards/public-snapshot.js'
 import { prepareCardSave } from '../cards/card-save.js'
 import { AppError } from '../utils/app-error.js'
+import { requireServerEnv } from '../config/server-env.js'
 import { database } from './client.js'
 
 interface JsonRow {
@@ -311,7 +316,7 @@ export async function getPublicCard(slug: string): Promise<CardView | null> {
   }
 }
 
-export async function createLead(slug: string, input: LeadInput) {
+export async function createLead(slug: string, input: PublicLeadSubmission) {
   const sql = await database()
   const owners = rowsOf<{
     owner_uid: string
@@ -327,13 +332,18 @@ export async function createLead(slug: string, input: LeadInput) {
   const owner = owners[0]
   if (!owner) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
   const id = randomUUID()
+  const source = input.sourceToken
+    ? rowsOf<{ id: string }>(
+        await sql`SELECT id FROM cardly_share_sources WHERE owner_uid = ${owner.owner_uid} AND token = ${input.sourceToken} LIMIT 1`,
+      )[0]
+    : undefined
   await sql.transaction([
     sql`
       INSERT INTO cardly_leads (
-        id, owner_uid, card_slug, sender_name, sender_contact, message, source
+        id, owner_uid, card_slug, sender_name, sender_contact, message, source, source_id
       ) VALUES (
         ${id}, ${owner.owner_uid}, ${slug}, ${input.senderName}, ${input.senderContact},
-        ${input.message}, ${input.source}
+        ${input.message}, ${input.source}, ${source?.id ?? null}
       )
     `,
     sql`
@@ -351,6 +361,12 @@ export async function createLead(slug: string, input: LeadInput) {
         updated_at = NOW()
     `,
   ])
+  if (input.visitId && input.eventId)
+    await insertRawAnalyticsEvent(sql, owner.owner_uid, slug, {
+      ...input,
+      type: 'lead_submit',
+      targetId: 'lead-form',
+    })
   return {
     id,
     ownerUid: owner.owner_uid,
@@ -376,11 +392,17 @@ export async function recordAnalyticsEvent(slug: string, event: AnalyticsEvent):
   )
   const uid = rows[0]?.owner_uid
   if (!uid) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+  if (event.visitId && event.eventId) {
+    const inserted = await insertRawAnalyticsEvent(sql, uid, slug, event)
+    if (!inserted) return
+  }
   const column = {
     card_view: 'total_views',
     primary_cta_click: 'total_primary_clicks',
     link_click: 'total_link_clicks',
     project_open: 'total_project_opens',
+    service_open: 'total_project_opens',
+    contact_save: 'total_primary_clicks',
     lead_submit: 'total_leads',
     share: 'total_shares',
   }[event.type] as MetricColumn
@@ -401,6 +423,95 @@ export async function recordAnalyticsEvent(slug: string, event: AnalyticsEvent):
     total_shares: sql`INSERT INTO cardly_daily_stats (owner_uid, day, shares) VALUES (${uid}, CURRENT_DATE, 1) ON CONFLICT (owner_uid, day) DO UPDATE SET shares = cardly_daily_stats.shares + 1, updated_at = NOW()`,
   }
   await sql.transaction([overallQueries[column], dailyQueries[column]])
+}
+
+function analyticsVisitHash(slug: string, visitId: string): string {
+  const secret = requireServerEnv('RATE_LIMIT_HASH_SECRET').RATE_LIMIT_HASH_SECRET
+  return createHmac('sha256', secret).update(`${slug}:${visitId}`).digest('hex')
+}
+
+async function insertRawAnalyticsEvent(
+  sql: Awaited<ReturnType<typeof database>>,
+  uid: string,
+  slug: string,
+  event: AnalyticsEvent,
+): Promise<boolean> {
+  if (!event.visitId || !event.eventId) return false
+  const source = event.sourceToken
+    ? rowsOf<{ id: string }>(
+        await sql`SELECT id FROM cardly_share_sources WHERE owner_uid = ${uid} AND token = ${event.sourceToken} LIMIT 1`,
+      )[0]
+    : undefined
+  const inserted = rowsOf<{ event_id: string }>(
+    await sql`
+      INSERT INTO cardly_analytics_events (
+        event_id, owner_uid, card_slug, event_type, target_id, source_id, visit_id_hash
+      ) VALUES (
+        ${event.eventId}, ${uid}, ${slug}, ${event.type}, ${event.targetId ?? null},
+        ${source?.id ?? null}, ${analyticsVisitHash(slug, event.visitId)}
+      ) ON CONFLICT (event_id) DO NOTHING RETURNING event_id
+    `,
+  )
+  return Boolean(inserted[0])
+}
+
+export function generateShareSourceToken(): string {
+  return randomBytes(18).toString('base64url')
+}
+
+function mapShareSource(row: Record<string, unknown>): ShareSource {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    token: String(row.token),
+    archived: Boolean(row.archived),
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+  }
+}
+
+export async function listShareSources(uid: string): Promise<ShareSource[]> {
+  const sql = await database()
+  return rowsOf<Record<string, unknown>>(
+    await sql`SELECT id, name, token, archived, created_at, updated_at FROM cardly_share_sources WHERE owner_uid = ${uid} ORDER BY archived, created_at DESC`,
+  ).map(mapShareSource)
+}
+
+export async function createShareSource(
+  uid: string,
+  input: ShareSourceCreate,
+): Promise<ShareSource> {
+  const sql = await database()
+  const card = rowsOf<{ slug: string | null; published: boolean }>(
+    await sql`SELECT slug, published FROM cardly_cards WHERE owner_uid = ${uid} LIMIT 1`,
+  )[0]
+  if (!card?.published || !card.slug)
+    throw new AppError(409, 'card_not_published', 'Сначала опубликуйте визитку')
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const id = randomUUID()
+    const token = generateShareSourceToken()
+    const rows = rowsOf<Record<string, unknown>>(
+      await sql`INSERT INTO cardly_share_sources (id, owner_uid, card_slug, name, token) VALUES (${id}, ${uid}, ${card.slug}, ${input.name}, ${token}) ON CONFLICT (token) DO NOTHING RETURNING *`,
+    )
+    if (rows[0]) return mapShareSource(rows[0])
+  }
+  throw new AppError(503, 'source_token_failed', 'Не удалось создать ссылку')
+}
+
+export async function updateShareSource(
+  uid: string,
+  id: string,
+  patch: ShareSourcePatch,
+): Promise<ShareSource> {
+  const sql = await database()
+  const current = rowsOf<Record<string, unknown>>(
+    await sql`SELECT * FROM cardly_share_sources WHERE id = ${id} AND owner_uid = ${uid} LIMIT 1`,
+  )[0]
+  if (!current) throw new AppError(404, 'share_source_not_found', 'Источник не найден')
+  const rows = rowsOf<Record<string, unknown>>(
+    await sql`UPDATE cardly_share_sources SET name = ${patch.name ?? String(current.name)}, archived = ${patch.archived ?? Boolean(current.archived)}, updated_at = NOW() WHERE id = ${id} AND owner_uid = ${uid} RETURNING *`,
+  )
+  return mapShareSource(rows[0])
 }
 
 interface StatsRow {
@@ -516,8 +627,90 @@ export function statsPeriodRange(days: number, now = new Date()) {
   }
 }
 
+interface JourneyEventRow {
+  visit_id_hash: string
+  event_type: string
+  source_id: string | null
+}
+
+export function buildJourneyStats(
+  events: JourneyEventRow[],
+  sources: ShareSource[],
+): Pick<PeriodStats, 'funnel' | 'sources' | 'interest'> {
+  const stageFor = (type: string) =>
+    type === 'lead_submit'
+      ? 4
+      : ['primary_cta_click', 'link_click', 'contact_save'].includes(type)
+        ? 3
+        : ['project_open', 'service_open'].includes(type)
+          ? 2
+          : 1
+  const visits = new Map<string, { stage: number; sourceId: string | null }>()
+  for (const event of events) {
+    const current = visits.get(event.visit_id_hash)
+    const stage = stageFor(event.event_type)
+    if (!current || stage > current.stage)
+      visits.set(event.visit_id_hash, { stage, sourceId: event.source_id })
+  }
+  const stages = [...visits.values()]
+  const funnel = {
+    views: stages.length,
+    interest: stages.filter((visit) => visit.stage >= 2).length,
+    contacts: stages.filter((visit) => visit.stage >= 3).length,
+    leads: stages.filter((visit) => visit.stage >= 4).length,
+    sampleSufficient: stages.length >= 10,
+  }
+  const sourceStats: ShareSourceStats[] = [
+    {
+      id: null,
+      name: 'Direct',
+      token: null,
+      archived: false,
+      views: 0,
+      leads: 0,
+      conversion: null,
+    },
+    ...sources.map((source) => ({ ...source, views: 0, leads: 0, conversion: null })),
+  ]
+  for (const visit of stages) {
+    const source = sourceStats.find((item) => item.id === visit.sourceId) ?? sourceStats[0]
+    source.views += 1
+    if (visit.stage >= 4) source.leads += 1
+  }
+  for (const source of sourceStats)
+    source.conversion = source.views >= 10 ? Math.round((source.leads / source.views) * 100) : null
+  sourceStats.sort((a, b) => b.views - a.views || a.name.localeCompare(b.name))
+  return {
+    funnel,
+    sources: sourceStats,
+    interest: [
+      {
+        label: 'projects',
+        value: events.filter((event) => event.event_type === 'project_open').length,
+      },
+      {
+        label: 'services',
+        value: events.filter((event) => event.event_type === 'service_open').length,
+      },
+      { label: 'links', value: events.filter((event) => event.event_type === 'link_click').length },
+    ],
+  }
+}
+
+async function getJourneyStats(uid: string, period: StatsPeriod) {
+  const sql = await database()
+  await sql`DELETE FROM cardly_analytics_events WHERE owner_uid = ${uid} AND occurred_at < NOW() - INTERVAL '90 days'`
+  const eventRows = rowsOf<JourneyEventRow>(
+    period === 'all'
+      ? await sql`SELECT visit_id_hash, event_type, source_id FROM cardly_analytics_events WHERE owner_uid = ${uid} AND occurred_at >= NOW() - INTERVAL '90 days'`
+      : await sql`SELECT visit_id_hash, event_type, source_id FROM cardly_analytics_events WHERE owner_uid = ${uid} AND occurred_at >= CURRENT_DATE - ${Number(period) - 1}`,
+  )
+  return buildJourneyStats(eventRows, await listShareSources(uid))
+}
+
 export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<PeriodStats> {
   const sql = await database()
+  const journey = await getJourneyStats(uid, period)
   if (period === 'all') {
     const rows = rowsOf<PeriodMetricRow>(
       await sql`
@@ -543,6 +736,7 @@ export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<P
         { label: 'projects', value: totals.projectOpens },
         { label: 'share', value: totals.shares },
       ],
+      ...journey,
     }
   }
   const days = period === '7' ? 7 : 30
@@ -594,6 +788,7 @@ export async function getOwnerStats(uid: string, period: StatsPeriod): Promise<P
       { label: 'projects', value: totals.projectOpens },
       { label: 'share', value: totals.shares },
     ],
+    ...journey,
   }
 }
 

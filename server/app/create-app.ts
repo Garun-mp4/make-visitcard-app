@@ -15,6 +15,8 @@ const knownPaths = [
   '/api/owner/dashboard',
   '/api/owner/preferences',
   '/api/owner/stats',
+  '/api/owner/share-sources',
+  '/api/owner/share-sources/:id',
   '/api/slugs/check',
   '/api/images/upload',
   '/api/images/delete',

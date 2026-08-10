@@ -6,9 +6,11 @@ import { z } from 'zod'
 import {
   analyticsEventSchema,
   cardDraftSchema,
-  leadSchema,
+  publicLeadSubmissionSchema,
   ownerPreferencesPatchSchema,
   slugSchema,
+  shareSourceCreateSchema,
+  shareSourcePatchSchema,
 } from '../../shared/schemas.js'
 import { requireSession } from '../auth/session.js'
 import { requireSessionAuth } from '../auth/session-middleware.js'
@@ -17,11 +19,13 @@ import { validateTelegramInitData } from '../auth/telegram-init-data.js'
 import { requireServerEnv } from '../config/server-env.js'
 import {
   createLead,
+  createShareSource,
   getCard,
   getOrCreateCard,
   getOwnerDashboard,
   getOwnerPreferences,
   getOwnerStats,
+  listShareSources,
   getPublicCard,
   isSlugAvailable,
   publishCard,
@@ -30,6 +34,7 @@ import {
   unpublishCard,
   updateLeadStatus,
   updateOwnerPreferences,
+  updateShareSource,
   upsertTelegramUser,
 } from '../db/repository.js'
 import { enforceRateLimit } from '../rate-limit/database-rate-limit.js'
@@ -109,6 +114,37 @@ export function registerRoutes(router: Router) {
     route(async (req, res) => {
       const period = z.enum(['7', '30', 'all']).parse(req.query.period ?? '7')
       res.json({ stats: await getOwnerStats(req.auth!.uid, period) })
+    }),
+  )
+
+  router.get(
+    '/api/owner/share-sources',
+    requireSessionAuth,
+    route(async (req, res) => {
+      res.json({ sources: await listShareSources(req.auth!.uid) })
+    }),
+  )
+
+  router.post(
+    '/api/owner/share-sources',
+    requireSessionAuth,
+    route(async (req, res) => {
+      const source = await createShareSource(req.auth!.uid, shareSourceCreateSchema.parse(req.body))
+      res.status(201).json({ source })
+    }),
+  )
+
+  router.patch(
+    '/api/owner/share-sources/:id',
+    requireSessionAuth,
+    route(async (req, res) => {
+      const id = z.string().uuid().parse(req.params.id)
+      const source = await updateShareSource(
+        req.auth!.uid,
+        id,
+        shareSourcePatchSchema.parse(req.body),
+      )
+      res.json({ source })
     }),
   )
 
@@ -264,7 +300,7 @@ export function registerRoutes(router: Router) {
     route(async (req, res) => {
       await enforceRateLimit(req, 'lead-submit', 6, 600)
       const slug = slugSchema.parse(req.params.slug)
-      const input = leadSchema.parse(req.body)
+      const input = publicLeadSubmissionSchema.parse(req.body)
       if (input.website) throw new AppError(400, 'spam_detected', 'Не удалось отправить заявку')
       const lead = await createLead(slug, input)
       try {

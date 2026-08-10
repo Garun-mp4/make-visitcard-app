@@ -77,10 +77,39 @@ export async function ensureDatabaseSchema(): Promise<void> {
         expires_at TIMESTAMPTZ NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )`,
+      sql`CREATE TABLE IF NOT EXISTS cardly_share_sources (
+        id UUID PRIMARY KEY,
+        owner_uid TEXT NOT NULL REFERENCES cardly_users(uid) ON DELETE CASCADE,
+        card_slug VARCHAR(30) NOT NULL,
+        name VARCHAR(60) NOT NULL,
+        token VARCHAR(64) UNIQUE NOT NULL,
+        archived BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`,
+      sql`CREATE TABLE IF NOT EXISTS cardly_analytics_events (
+        event_id UUID PRIMARY KEY,
+        owner_uid TEXT NOT NULL REFERENCES cardly_users(uid) ON DELETE CASCADE,
+        card_slug VARCHAR(30) NOT NULL,
+        event_type VARCHAR(40) NOT NULL,
+        target_id VARCHAR(80),
+        source_id UUID REFERENCES cardly_share_sources(id) ON DELETE SET NULL,
+        visit_id_hash VARCHAR(64) NOT NULL,
+        occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )`,
       sql`CREATE INDEX IF NOT EXISTS cardly_leads_owner_created_idx
         ON cardly_leads(owner_uid, created_at DESC)`,
       sql`ALTER TABLE cardly_users ADD COLUMN IF NOT EXISTS preferred_locale TEXT`,
       sql`ALTER TABLE cardly_users ADD COLUMN IF NOT EXISTS lead_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE`,
+      sql`ALTER TABLE cardly_leads ADD COLUMN IF NOT EXISTS source_id UUID REFERENCES cardly_share_sources(id) ON DELETE SET NULL`,
+      sql`CREATE INDEX IF NOT EXISTS cardly_share_sources_owner_idx
+        ON cardly_share_sources(owner_uid, archived, created_at DESC)`,
+      sql`CREATE INDEX IF NOT EXISTS cardly_analytics_owner_time_idx
+        ON cardly_analytics_events(owner_uid, occurred_at DESC)`,
+      sql`CREATE INDEX IF NOT EXISTS cardly_analytics_source_time_idx
+        ON cardly_analytics_events(source_id, occurred_at DESC)`,
+      sql`CREATE INDEX IF NOT EXISTS cardly_analytics_visit_idx
+        ON cardly_analytics_events(owner_uid, visit_id_hash, occurred_at DESC)`,
     ])
   })().catch((error) => {
     schemaPromise = null
