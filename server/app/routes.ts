@@ -40,6 +40,7 @@ import { loadPublicCardTemplate } from '../social/card-page-template.js'
 import { renderOpenGraphImage } from '../social/open-graph-image.js'
 import { renderQrPng } from '../social/qr-image.js'
 import { buildSharePreviewMetadata, renderPublicCardHtml } from '../social/share-preview.js'
+import { createVCard } from '../../shared/vcard.js'
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>
 const route = (handler: AsyncHandler) => (req: Request, res: Response, next: NextFunction) =>
@@ -228,6 +229,23 @@ export function registerRoutes(router: Router) {
       res.setHeader('Access-Control-Allow-Origin', 'https://web.telegram.org')
       res.setHeader('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
       res.status(200).send(image)
+    }),
+  )
+
+  router.get(
+    '/api/public/cards/:slug/contact.vcf',
+    route(async (req, res) => {
+      const slug = slugSchema.parse(req.params.slug)
+      const card = await getPublicCard(slug)
+      if (!card) throw new AppError(404, 'card_not_found', 'Визитка не найдена')
+      const fileName = `cardly-${slug}.vcf`
+      const body = createVCard(card, `${appOrigin(req)}/c/${slug}`)
+      res.setHeader('Content-Type', 'text/vcard; charset=utf-8')
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+      res.setHeader('Access-Control-Allow-Origin', 'https://web.telegram.org')
+      res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+      res.setHeader('CDN-Cache-Control', 'max-age=0, stale-while-revalidate=30')
+      res.status(200).send(body)
     }),
   )
 

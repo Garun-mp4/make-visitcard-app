@@ -1,37 +1,47 @@
-import type { CardView } from '@shared/types'
+import { telegram } from './telegram'
 
-export function escapeVCard(value: string): string {
-  return value
-    .replaceAll('\\', '\\\\')
-    .replaceAll('\n', '\\n')
-    .replaceAll(';', '\\;')
-    .replaceAll(',', '\\,')
+export type ContactDownloadResult = 'downloading' | 'cancelled' | 'opened' | 'unsupported' | 'error'
+
+export function contactFileName(slug: string): string {
+  const safeSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '') || 'contact'
+  return `cardly-${safeSlug}.vcf`
 }
 
-export function createVCard(card: CardView): string {
-  const publicLinks = card.links.filter((link) => link.enabled && link.public)
-  const lines = ['BEGIN:VCARD', 'VERSION:3.0']
-  lines.push(`FN:${escapeVCard(card.profile.displayName)}`)
-  lines.push(`TITLE:${escapeVCard(card.profile.profession)}`)
+export function contactVCardUrl(publicUrl: string, slug: string): string {
+  const origin = new URL(publicUrl).origin
+  return `${origin}/api/public/cards/${encodeURIComponent(slug)}/contact.vcf`
+}
 
-  for (const link of publicLinks) {
-    if (link.type === 'phone') lines.push(`TEL:${escapeVCard(link.url.replace(/^tel:/, ''))}`)
-    if (link.type === 'email') lines.push(`EMAIL:${escapeVCard(link.url.replace(/^mailto:/, ''))}`)
-    if (link.type === 'website') lines.push(`URL:${escapeVCard(link.url)}`)
-    if (link.type === 'telegram')
-      lines.push(`X-SOCIALPROFILE;TYPE=telegram:${escapeVCard(link.url)}`)
+export async function downloadVCard(url: string, slug: string): Promise<ContactDownloadResult> {
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return 'unsupported'
   }
+  const local = parsed.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(parsed.hostname)
+  if (parsed.protocol !== 'https:' && !local) return 'unsupported'
 
-  lines.push('END:VCARD')
-  return `${lines.join('\r\n')}\r\n`
-}
+  try {
+    const fileName = contactFileName(slug)
+    const nativeResult = await telegram.downloadFile({ url: parsed.toString(), fileName })
+    if (nativeResult !== 'unsupported') return nativeResult
 
-export function downloadVCard(card: CardView): void {
-  const blob = new Blob([createVCard(card)], { type: 'text/vcard;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `${card.publication.slug || 'contact'}.vcf`
-  anchor.click()
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    if (telegram.available) {
+      telegram.openLink(parsed.toString())
+      return 'opened'
+    }
+
+    const anchor = document.createElement('a')
+    anchor.href = parsed.toString()
+    anchor.download = fileName
+    anchor.rel = 'noopener'
+    anchor.hidden = true
+    document.body.append(anchor)
+    anchor.click()
+    anchor.remove()
+    return 'opened'
+  } catch {
+    return 'error'
+  }
 }
