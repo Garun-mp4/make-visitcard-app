@@ -207,12 +207,12 @@ interface SharePreview {
 
 ## Milestone 2. Источники переходов и воронка визитки
 
-**Статус:** in progress — core implementation and local QA complete
+**Статус:** implemented — Production Ready verified
 
 Реализовано в `codex/milestone-2-funnel`: owner CRUD источников, устойчивые ref-токены,
 QR/download/share, анонимные идемпотентные события, 90-дневное raw-хранение, связная воронка,
-рейтинг источников, small-sample состояния и RU/EN интерфейс. До статуса `implemented` остаются
-Vercel Preview smoke test и проверка реального Telegram WebView на production-like API.
+рейтинг источников, small-sample состояния и RU/EN интерфейс. Пройдены unit/API/browser E2E,
+production-like Telegram E2E, Vercel Preview smoke test и проверка Production API.
 
 **Приоритет:** P0
 
