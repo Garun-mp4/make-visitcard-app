@@ -510,6 +510,7 @@ function mapShareSource(row: Record<string, unknown>): ShareSource {
     name: String(row.name),
     token: String(row.token),
     archived: Boolean(row.archived),
+    views: Number(row.views ?? 0),
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   }
@@ -518,7 +519,13 @@ function mapShareSource(row: Record<string, unknown>): ShareSource {
 export async function listShareSources(uid: string): Promise<ShareSource[]> {
   const sql = await database()
   return rowsOf<Record<string, unknown>>(
-    await sql`SELECT id, name, token, archived, created_at, updated_at FROM cardly_share_sources WHERE owner_uid = ${uid} ORDER BY archived, created_at DESC`,
+    await sql`SELECT s.id, s.name, s.token, s.archived, s.created_at, s.updated_at,
+        COUNT(DISTINCT e.visit_id_hash)::int AS views
+        FROM cardly_share_sources s
+        LEFT JOIN cardly_analytics_events e ON e.source_id = s.id AND e.event_type = 'card_view'
+        WHERE s.owner_uid = ${uid}
+        GROUP BY s.id, s.name, s.token, s.archived, s.created_at, s.updated_at
+        ORDER BY s.archived, s.created_at DESC`,
   ).map(mapShareSource)
 }
 
@@ -689,11 +696,14 @@ export function buildJourneyStats(
         ? 3
         : ['project_open', 'service_open'].includes(type)
           ? 2
-          : 1
+          : type === 'card_view'
+            ? 1
+            : 0
   const visits = new Map<string, { stage: number; sourceId: string | null }>()
   for (const event of events) {
     const current = visits.get(event.visit_id_hash)
     const stage = stageFor(event.event_type)
+    if (stage === 0) continue
     if (!current || stage > current.stage)
       visits.set(event.visit_id_hash, { stage, sourceId: event.source_id })
   }

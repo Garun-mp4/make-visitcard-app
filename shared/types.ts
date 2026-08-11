@@ -125,6 +125,7 @@ export interface ShareSource {
   name: string
   token: string
   archived: boolean
+  views?: number
   createdAt: string
   updatedAt: string
 }

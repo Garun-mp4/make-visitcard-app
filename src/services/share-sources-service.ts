@@ -1,6 +1,7 @@
 import type { ShareSource, ShareSourceCreate, ShareSourcePatch } from '@shared/types'
 import { clientEnv } from '@/config/client-env'
 import { apiRequest } from '@/services/api-client'
+import { copyText } from '@/lib/utils'
 
 const demoKey = 'cardly:demo-share-sources'
 
@@ -35,11 +36,19 @@ export async function createShareSource(input: ShareSourceCreate): Promise<Share
     name: input.name,
     token: crypto.randomUUID().replaceAll('-', ''),
     archived: false,
+    views: 0,
     createdAt: now,
     updatedAt: now,
   }
   saveDemo([source, ...demoSources()])
   return source
+}
+
+export async function copyShareSourceLink(
+  url: string,
+  copy: (value: string) => Promise<boolean> = copyText,
+): Promise<'copied' | 'manual'> {
+  return (await copy(url)) ? 'copied' : 'manual'
 }
 
 export async function patchShareSource(id: string, patch: ShareSourcePatch): Promise<ShareSource> {

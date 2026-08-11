@@ -21,6 +21,7 @@ import { useLocaleText } from '@/i18n/use-locale-text'
 import { downloadQrPng, qrPngUrl, shareQrPng } from '@/lib/qr-code'
 import { copyText } from '@/lib/utils'
 import {
+  copyShareSourceLink,
   createShareSource,
   loadShareSources,
   patchShareSource,
@@ -193,6 +194,9 @@ export function ShareSourcesSection({ slug }: { slug: string }) {
                 <span className="block truncate text-[10px] text-[var(--text-muted)]">
                   ?ref={source.token}
                 </span>
+                <span className="block text-[10px] text-[var(--text-muted)]">
+                  {source.views ?? 0} {l('просмотров', 'views')}
+                </span>
               </button>
             )}
             <div className="flex">
@@ -286,9 +290,11 @@ export function ShareSourcesSection({ slug }: { slug: string }) {
               <Button
                 variant="secondary"
                 onClick={() =>
-                  void copyText(urlFor(selected)).then(() =>
-                    feedback.notify(l('Ссылка скопирована', 'Link copied'), 'success'),
-                  )
+                  void copyShareSourceLink(urlFor(selected)).then((result) => {
+                    if (result === 'copied')
+                      feedback.notify(l('Ссылка скопирована', 'Link copied'), 'success')
+                    else feedback.revealLink(selected.name, urlFor(selected))
+                  })
                 }
               >
                 <Copy size={17} />
@@ -304,8 +310,15 @@ export function ShareSourcesSection({ slug }: { slug: string }) {
                 onClick={() =>
                   void (async () => {
                     if (!sourceQr.asset) return
-                    await downloadQrPng(sourceQr.asset, qrPngUrl(selectedUrl, slug))
-                    feedback.notify(l('QR-код скачан', 'QR code downloaded'), 'success')
+                    try {
+                      await downloadQrPng(sourceQr.asset, qrPngUrl(selectedUrl, slug))
+                      feedback.notify(l('QR-код скачан', 'QR code downloaded'), 'success')
+                    } catch {
+                      feedback.notify(
+                        l('Не удалось скачать QR-код', 'Could not download QR code'),
+                        'error',
+                      )
+                    }
                   })()
                 }
               >
@@ -318,12 +331,19 @@ export function ShareSourcesSection({ slug }: { slug: string }) {
                 onClick={() =>
                   void (async () => {
                     if (!sourceQr.asset) return
-                    const result = await shareQrPng(sourceQr.asset, {
-                      title: selected.name,
-                      text: selectedUrl,
-                      url: selectedUrl,
-                    })
-                    if (result === 'unsupported') feedback.revealLink(selected.name, selectedUrl)
+                    try {
+                      const result = await shareQrPng(sourceQr.asset, {
+                        title: selected.name,
+                        text: selectedUrl,
+                        url: selectedUrl,
+                      })
+                      if (result === 'unsupported') feedback.revealLink(selected.name, selectedUrl)
+                    } catch {
+                      feedback.notify(
+                        l('Не удалось поделиться QR-кодом', 'Could not share QR code'),
+                        'error',
+                      )
+                    }
                   })()
                 }
               >

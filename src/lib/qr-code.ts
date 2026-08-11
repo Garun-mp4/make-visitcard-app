@@ -93,10 +93,15 @@ export async function shareQrPng(
   details: Pick<ShareData, 'title' | 'text' | 'url'>,
 ): Promise<QrShareResult> {
   const fileData: ShareData = { title: details.title, text: details.text, files: [asset.file] }
-  if (
-    typeof navigator.share === 'function' &&
-    (typeof navigator.canShare !== 'function' || navigator.canShare(fileData))
-  ) {
+  let canShareFiles = typeof navigator.share === 'function'
+  if (canShareFiles && typeof navigator.canShare === 'function') {
+    try {
+      canShareFiles = navigator.canShare(fileData)
+    } catch {
+      canShareFiles = false
+    }
+  }
+  if (canShareFiles) {
     try {
       await navigator.share(fileData)
       return 'shared'

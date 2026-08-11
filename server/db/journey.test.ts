@@ -38,4 +38,12 @@ describe('Milestone 2 journey analytics', () => {
     expect(first).toMatch(/^[A-Za-z0-9_-]{16,64}$/)
     expect(second).not.toBe(first)
   })
+
+  it('does not turn a share-only event into a card view', () => {
+    const result = buildJourneyStats(
+      [{ visit_id_hash: 'share-only', event_type: 'share', source_id: null }],
+      [],
+    )
+    expect(result.funnel).toMatchObject({ views: 0, interest: 0, contacts: 0, leads: 0 })
+  })
 })

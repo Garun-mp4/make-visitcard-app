@@ -95,6 +95,18 @@ describe('QR image actions', () => {
     await expect(shareQrPng(asset, { title: 'Ada' })).resolves.toBe('unsupported')
   })
 
+  it('falls back when a WebView throws while checking file sharing support', async () => {
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: vi.fn(() => {
+        throw new Error('WebView denied canShare')
+      }),
+    })
+    Object.defineProperty(navigator, 'share', { configurable: true, value: vi.fn() })
+
+    await expect(shareQrPng(asset, { title: 'Ada' })).resolves.toBe('unsupported')
+  })
+
   it('opens the Telegram chooser when its WebView cannot share PNG files', async () => {
     Object.defineProperty(navigator, 'canShare', {
       configurable: true,
