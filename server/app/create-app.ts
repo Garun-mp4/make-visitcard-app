@@ -70,13 +70,22 @@ export function createApp() {
               error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
             )
           : new AppError(500, 'internal_error', 'Внутренняя ошибка сервера')
-    if (appError.status >= 500)
+    if (appError.status >= 500) {
+      const source =
+        error && typeof error === 'object' ? (error as Record<string, unknown>) : undefined
+      const errorName = error instanceof Error ? error.name : String(source?.name ?? 'UnknownError')
+      const errorMessage = error instanceof Error ? error.message : String(source?.message ?? error)
+      const errorCode = typeof source?.code === 'string' ? source.code : undefined
       logger.error('Unhandled API error', {
         requestId: req.requestId,
         route: req.path,
         status: appError.status,
         code: appError.code,
+        errorName,
+        errorMessage: errorMessage.slice(0, 240),
+        ...(errorCode ? { errorCode } : {}),
       })
+    }
     res.status(appError.status).json({
       code: appError.code,
       message: appError.message,
