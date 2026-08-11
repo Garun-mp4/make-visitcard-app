@@ -357,7 +357,7 @@ export async function createLead(slug: string, input: PublicLeadSubmission) {
           SELECT ${id}, ${owner.owner_uid}, ${slug}, ${input.senderName}, ${input.senderContact},
             ${input.message}, ${input.source}, ${source?.id ?? null}, ${input.eventId}
           FROM inserted_event
-          ON CONFLICT (analytics_event_id) DO NOTHING
+          ON CONFLICT (analytics_event_id) WHERE analytics_event_id IS NOT NULL DO NOTHING
           RETURNING id
         ), updated_stats AS (
           INSERT INTO cardly_stats (owner_uid, total_leads, updated_at)

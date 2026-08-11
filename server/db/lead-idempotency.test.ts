@@ -8,14 +8,18 @@ vi.mock('./client.js', () => ({ database }))
 import { createLead } from './repository.js'
 import { resetServerEnvForTests } from '../config/server-env.js'
 
+let queryTexts: string[] = []
+
 describe('attributed lead idempotency', () => {
   beforeEach(() => {
     process.env.RATE_LIMIT_HASH_SECRET = 'test-rate-limit-hash-secret-123456'
     resetServerEnvForTests()
+    queryTexts = []
     let rawEventInserted = false
     const sql = Object.assign(
       vi.fn((strings: TemplateStringsArray) => {
         const query = strings.join(' ')
+        queryTexts.push(query)
         if (query.includes('SELECT c.owner_uid'))
           return Promise.resolve([
             {
@@ -55,6 +59,9 @@ describe('attributed lead idempotency', () => {
     const first = await createLead('ada', input)
     const retried = await createLead('ada', input)
 
+    expect(queryTexts.find((query) => query.includes('WITH inserted_event'))).toContain(
+      'ON CONFLICT (analytics_event_id) WHERE analytics_event_id IS NOT NULL DO NOTHING',
+    )
     expect(retried.id).toBe(first.id)
     expect(first.notifyOwner).toBe(true)
     expect(retried.notifyOwner).toBe(false)
