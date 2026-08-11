@@ -25,4 +25,16 @@ describe('public visit context', () => {
     window.history.replaceState({}, '', '/c/ada?ref=%3Cscript%3E')
     expect(getPublicVisitContext('other')).not.toHaveProperty('sourceToken')
   })
+
+  it('falls back when session storage is unavailable', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('storage blocked')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage blocked')
+    })
+    const first = getPublicVisitContext('blocked')
+    const second = getPublicVisitContext('blocked')
+    expect(first.visitId).toBe(second.visitId)
+  })
 })

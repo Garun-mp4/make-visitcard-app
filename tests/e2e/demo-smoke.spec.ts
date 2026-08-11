@@ -265,7 +265,8 @@ test('publication creates a tracked link and QR in one flow', async ({ page }, t
   })
 
   await dialog.getByRole('button', { name: 'Закрыть' }).click()
-  await expect(page.getByText('Летняя конференция')).toBeVisible()
+  const sourceRow = page.getByRole('button', { name: /Летняя конференция/ })
+  await expect(sourceRow).toContainText('0 просмотров')
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
     await page.evaluate(() => document.documentElement.clientWidth),
   )
