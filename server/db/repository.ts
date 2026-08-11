@@ -758,7 +758,7 @@ async function getJourneyStats(uid: string, period: StatsPeriod) {
   const eventRows = rowsOf<JourneyEventRow>(
     period === 'all'
       ? await sql`SELECT visit_id_hash, event_type, source_id FROM cardly_analytics_events WHERE owner_uid = ${uid} AND occurred_at >= NOW() - INTERVAL '90 days'`
-      : await sql`SELECT visit_id_hash, event_type, source_id FROM cardly_analytics_events WHERE owner_uid = ${uid} AND occurred_at >= CURRENT_DATE - ${Number(period) - 1}`,
+      : await sql`SELECT visit_id_hash, event_type, source_id FROM cardly_analytics_events WHERE owner_uid = ${uid} AND occurred_at >= CURRENT_DATE - make_interval(days => ${Number(period) - 1})`,
   )
   return buildJourneyStats(eventRows, await listShareSources(uid))
 }

@@ -1,11 +1,12 @@
 // @vitest-environment node
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as RepositoryModule from '../db/repository.js'
 
 const { getOwnerStats } = vi.hoisted(() => ({ getOwnerStats: vi.fn() }))
 
 vi.mock('../db/repository.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../db/repository.js')>()),
+  ...(await importOriginal<typeof RepositoryModule>()),
   getOwnerStats,
 }))
 
